@@ -19,6 +19,8 @@ import {
   Star,
   Target,
   Trophy,
+  UserCheck,
+  Video,
   Zap,
 } from "lucide-react";
 import type { StudyPack } from "../api/studypack/generate/route";
@@ -26,6 +28,8 @@ import { NotebookLMAssistant } from "./NotebookLMAssistant";
 import { TimedQuizPlayer } from "./TimedQuizPlayer";
 import { TriviaGameTemplate } from "./TriviaGameTemplate";
 import { SpacedRepetitionDeck } from "./SpacedRepetitionDeck";
+import { VideoTutorialHub } from "./VideoTutorialHub";
+import { TeacherReviewHub } from "./TeacherReviewHub";
 
 interface Props {
   pack: StudyPack;
@@ -33,7 +37,9 @@ interface Props {
 }
 
 export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
-  const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "timed_quiz" | "trivia" | "practice" | "notebooklm" | "quality">("notes");
+  const [activeTab, setActiveTab] = useState<
+    "notes" | "notebooklm" | "timed_quiz" | "flashcards" | "trivia" | "practice" | "videos" | "teacher" | "quality"
+  >("notes");
 
   // Practice accordion state
   const [expandedPq, setExpandedPq] = useState<Record<string, boolean>>({});
@@ -92,7 +98,7 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
               {pack.chapter_title}
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-slate-500 font-medium">
-              Interactive Learning Loop: Notes · Spaced Flashcards · Timed Quiz · Trivia Game · NotebookLM AI Assistant
+              NotebookLM Studio: Grounded Notes · Dynamic AI Tutor · Premium Quiz · Spaced Flashcards · Practice Qs
             </p>
           </div>
 
@@ -106,59 +112,23 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
               </button>
             )}
             <button
-              onClick={() => setActiveTab("quality")}
-              className="flex items-center gap-1.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition"
+              onClick={() => setActiveTab("teacher")}
+              className="flex items-center gap-1.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition shadow-sm"
             >
-              <CheckCircle2 size={16} /> Quality Gate Verified
+              <UserCheck size={16} /> Teacher Hub
             </button>
           </div>
         </div>
 
         {/* Tab Navigation */}
         <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
-          <TabButton
-            active={activeTab === "notes"}
-            onClick={() => setActiveTab("notes")}
-            icon={<BookOpen size={16} />}
-            label="Short Notes"
-            accent="sky"
-          />
-          <TabButton
-            active={activeTab === "flashcards"}
-            onClick={() => setActiveTab("flashcards")}
-            icon={<Layers size={16} />}
-            label="Spaced Flashcards"
-            accent="amber"
-          />
-          <TabButton
-            active={activeTab === "timed_quiz"}
-            onClick={() => setActiveTab("timed_quiz")}
-            icon={<Target size={16} />}
-            label="Timed Quiz"
-            accent="emerald"
-          />
-          <TabButton
-            active={activeTab === "trivia"}
-            onClick={() => setActiveTab("trivia")}
-            icon={<Gamepad2 size={16} />}
-            label="Trivia Game"
-            accent="purple"
-          />
-          <TabButton
-            active={activeTab === "practice"}
-            onClick={() => setActiveTab("practice")}
-            icon={<Star size={16} />}
-            label="High-Priority Qs"
-            accent="rose"
-          />
-          <TabButton
-            active={activeTab === "notebooklm"}
-            onClick={() => setActiveTab("notebooklm")}
-            icon={<Bot size={16} />}
-            label="NotebookLM AI Assistant"
-            badge="Ask AI"
-            accent="sky"
-          />
+          <TabButton active={activeTab === "notes"} onClick={() => setActiveTab("notes")} icon={<BookOpen size={16} />} label="Short Notes" accent="sky" />
+          <TabButton active={activeTab === "notebooklm"} onClick={() => setActiveTab("notebooklm")} icon={<Bot size={16} />} label="NotebookLM AI Studio" badge="Ask AI" accent="sky" />
+          <TabButton active={activeTab === "timed_quiz"} onClick={() => setActiveTab("timed_quiz")} icon={<Target size={16} />} label="Timed Quiz" accent="emerald" />
+          <TabButton active={activeTab === "flashcards"} onClick={() => setActiveTab("flashcards")} icon={<Layers size={16} />} label="Spaced Flashcards" accent="amber" />
+          <TabButton active={activeTab === "trivia"} onClick={() => setActiveTab("trivia")} icon={<Gamepad2 size={16} />} label="Trivia Game" accent="purple" />
+          <TabButton active={activeTab === "practice"} onClick={() => setActiveTab("practice")} icon={<Star size={16} />} label="High-Priority Qs" accent="rose" />
+          <TabButton active={activeTab === "videos"} onClick={() => setActiveTab("videos")} icon={<Video size={16} />} label="Videos" accent="rose" />
         </div>
       </div>
 
@@ -225,19 +195,37 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
 
                 <div className="rounded-3xl border border-sky-200 bg-gradient-to-b from-sky-50 to-indigo-50 p-5 text-center shadow-sm">
                   <Bot className="mx-auto text-sky-600" size={32} />
-                  <h4 className="mt-2 text-sm font-bold text-slate-900">Have a question on this chapter?</h4>
-                  <p className="mt-1 text-xs text-slate-600">Ask our NotebookLM AI Tutor for instant explanations!</p>
+                  <h4 className="mt-2 text-sm font-bold text-slate-900">NotebookLM AI Studio</h4>
+                  <p className="mt-1 text-xs text-slate-600">Ask any question grounded in your official textbook source!</p>
                   <button
                     onClick={() => setActiveTab("notebooklm")}
                     className="mt-4 w-full rounded-2xl bg-sky-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-sky-500 shadow-md transition"
                   >
-                    Open NotebookLM AI Assistant 🤖
+                    Open NotebookLM Studio 🤖
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Bottom Next Step Button */}
+            <div className="flex justify-end pt-4 border-t border-slate-200">
+              <button
+                onClick={() => setActiveTab("notebooklm")}
+                className="flex items-center gap-2 rounded-2xl bg-sky-600 px-6 py-3 text-xs font-bold text-white hover:bg-sky-500 shadow-md transition"
+              >
+                Next Step: NotebookLM AI Studio 🤖 ➔
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* NOTEBOOKLM AI ASSISTANT TAB */}
+        {activeTab === "notebooklm" && <NotebookLMAssistant pack={pack} />}
+
+        {/* TIMED QUIZ TAB */}
+        {activeTab === "timed_quiz" && (
+          <div className="space-y-6">
+            <TimedQuizPlayer mcqs={pack.mcqs} chapterTitle={pack.chapter_title} />
             <div className="flex justify-end pt-4 border-t border-slate-200">
               <button
                 onClick={() => setActiveTab("flashcards")}
@@ -253,21 +241,6 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
         {activeTab === "flashcards" && (
           <div className="space-y-6">
             <SpacedRepetitionDeck flashcards={pack.flashcards} chapterTitle={pack.chapter_title} cacheKey={pack.cache_key} />
-            <div className="flex justify-end pt-4 border-t border-slate-200">
-              <button
-                onClick={() => setActiveTab("timed_quiz")}
-                className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white hover:bg-emerald-500 shadow-md transition"
-              >
-                Next Step: Timed Quiz Player ➔
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* TIMED QUIZ TAB */}
-        {activeTab === "timed_quiz" && (
-          <div className="space-y-6">
-            <TimedQuizPlayer mcqs={pack.mcqs} chapterTitle={pack.chapter_title} />
             <div className="flex justify-end pt-4 border-t border-slate-200">
               <button
                 onClick={() => setActiveTab("trivia")}
@@ -310,14 +283,11 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
             </div>
 
             <div className="space-y-4">
-              {pack.high_priority_questions.map((pq, idx) => {
+              {pack.high_priority_questions.map((pq) => {
                 const isOpen = !!expandedPq[pq.id];
 
                 return (
-                  <div
-                    key={pq.id}
-                    className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300"
-                  >
+                  <div key={pq.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-xl bg-purple-100 px-3 py-1 text-xs font-extrabold text-purple-800 border border-purple-200">
@@ -370,20 +340,14 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
                 );
               })}
             </div>
-
-            <div className="flex justify-end pt-4 border-t border-slate-200">
-              <button
-                onClick={() => setActiveTab("notebooklm")}
-                className="flex items-center gap-2 rounded-2xl bg-sky-600 px-6 py-3 text-xs font-bold text-white hover:bg-sky-500 shadow-md transition"
-              >
-                Next Step: NotebookLM AI Assistant 🤖
-              </button>
-            </div>
           </div>
         )}
 
-        {/* NOTEBOOKLM AI ASSISTANT TAB */}
-        {activeTab === "notebooklm" && <NotebookLMAssistant pack={pack} />}
+        {/* VIDEO TUTORIALS TAB */}
+        {activeTab === "videos" && <VideoTutorialHub pack={pack} />}
+
+        {/* TEACHER HUB TAB */}
+        {activeTab === "teacher" && <TeacherReviewHub pack={pack} />}
 
         {/* QUALITY GATE TAB */}
         {activeTab === "quality" && (
@@ -392,7 +356,7 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
               <CheckCircle2 className="text-emerald-600" size={28} />
               <div>
                 <h3 className="text-lg font-bold text-slate-900">EduAI Quality Gate Validation Matrix</h3>
-                <p className="text-xs text-slate-500">Validation status for Study Pack v{pack.version}</p>
+                <p className="text-xs text-slate-500 font-medium">Validation status for Study Pack v{pack.version}</p>
               </div>
             </div>
 
@@ -426,9 +390,7 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
 
             <div>
               <label className="block text-xs font-bold text-slate-500">Reporting item:</label>
-              <div className="mt-1 rounded-xl bg-slate-100 p-2.5 text-xs text-slate-800 font-bold">
-                {reportingItem.title}
-              </div>
+              <div className="mt-1 rounded-xl bg-slate-100 p-2.5 text-xs text-slate-800 font-bold">{reportingItem.title}</div>
             </div>
 
             <div>
