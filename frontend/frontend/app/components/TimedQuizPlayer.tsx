@@ -4,13 +4,11 @@ import { useState, useEffect } from "react";
 import {
   AlertTriangle,
   ArrowRight,
-  Bot,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock,
   HelpCircle,
-  LoaderCircle,
   RefreshCw,
   RotateCcw,
   Sparkles,
@@ -27,7 +25,7 @@ interface Props {
 
 export function TimedQuizPlayer({ mcqs: initialMcqs, chapterTitle }: Props) {
   const [activeMcqs, setActiveMcqs] = useState<MCQ[]>(initialMcqs);
-  const [quizLength, setQuizLength] = useState<10 | 20 | "all">(10);
+  const [quizLength, setQuizLength] = useState<10 | 20>(10);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<Record<number, number>>({});
@@ -35,7 +33,6 @@ export function TimedQuizPlayer({ mcqs: initialMcqs, chapterTitle }: Props) {
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
   const [isCompleted, setIsCompleted] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
-  const [loadingMoreAi, setLoadingMoreAi] = useState(false);
 
   // Sync initial MCQs if props change
   useEffect(() => {
@@ -43,7 +40,7 @@ export function TimedQuizPlayer({ mcqs: initialMcqs, chapterTitle }: Props) {
   }, [initialMcqs]);
 
   // Determine active slice of questions based on selected quiz mode
-  const currentMcqPool = quizLength === 10 ? activeMcqs.slice(0, 10) : activeMcqs;
+  const currentMcqPool = activeMcqs.slice(0, quizLength);
 
   const currentMcq = currentMcqPool[currentIndex] || currentMcqPool[0];
   const userSelectedIndex = selectedOptions[currentIndex];
@@ -92,31 +89,6 @@ export function TimedQuizPlayer({ mcqs: initialMcqs, chapterTitle }: Props) {
     setReviewMode(false);
   }
 
-  async function generateMoreWithAi() {
-    setLoadingMoreAi(true);
-    try {
-      const res = await fetch("/api/studypack/quiz/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chapter_title: chapterTitle,
-          count: 10,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.mcqs && Array.isArray(data.mcqs)) {
-        setActiveMcqs((prev) => [...prev, ...data.mcqs]);
-        setQuizLength("all");
-        alert(`NotebookLM AI generated ${data.mcqs.length} fresh MCQs dynamically!`);
-      }
-    } catch (err) {
-      console.error("Failed to generate more MCQs", err);
-    } finally {
-      setLoadingMoreAi(false);
-    }
-  }
-
   // Calculate score stats
   const totalQuestions = currentMcqPool.length;
   let correctCount = 0;
@@ -151,7 +123,7 @@ export function TimedQuizPlayer({ mcqs: initialMcqs, chapterTitle }: Props) {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800 border border-emerald-200">
-              <Zap size={13} /> NotebookLM Dynamic Quiz Studio
+              <Zap size={13} /> Chapter Practice Quiz
             </span>
             <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[11px] font-extrabold text-sky-800">
               {activeMcqs.length} Total MCQs Available
@@ -287,7 +259,7 @@ export function TimedQuizPlayer({ mcqs: initialMcqs, chapterTitle }: Props) {
             )}
           </div>
 
-          {/* Bottom Bar Controls with NotebookLM Dynamic Generator */}
+          {/* Bottom quiz controls */}
           <div className="flex flex-wrap items-center justify-between border-t border-slate-100 pt-4 gap-3">
             <button
               disabled={currentIndex === 0}
@@ -295,16 +267,6 @@ export function TimedQuizPlayer({ mcqs: initialMcqs, chapterTitle }: Props) {
               className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
             >
               ← Previous
-            </button>
-
-            {/* Generate More MCQs Button */}
-            <button
-              disabled={loadingMoreAi}
-              onClick={generateMoreWithAi}
-              className="flex items-center gap-1.5 rounded-2xl border border-purple-300 bg-purple-50 px-4 py-2.5 text-xs font-extrabold text-purple-800 hover:bg-purple-100 transition shadow-xs"
-            >
-              {loadingMoreAi ? <LoaderCircle className="animate-spin text-purple-600" size={15} /> : <Bot size={15} className="text-purple-600" />}
-              Generate 10 More MCQs via Gemini Flash AI
             </button>
 
             {answered ? (
@@ -322,6 +284,27 @@ export function TimedQuizPlayer({ mcqs: initialMcqs, chapterTitle }: Props) {
       ) : (
         /* QUIZ REPORT CARD VIEW */
         <div className="space-y-8 animate-fadeIn">
+          {/* Confetti burst on A+ grade */}
+          {percentage >= 90 && (
+            <>
+              {Array.from({ length: 30 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="confetti-piece"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 2}s`,
+                    animationDuration: `${2 + Math.random() * 2}s`,
+                    backgroundColor: ["#38bdf8", "#a855f7", "#f59e0b", "#34d399", "#f43f5e", "#6366f1"][
+                      Math.floor(Math.random() * 6)
+                    ],
+                    width: `${6 + Math.random() * 8}px`,
+                    height: `${6 + Math.random() * 8}px`,
+                  }}
+                />
+              ))}
+            </>
+          )}
           {/* Main Score Hero Card */}
           <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-sky-950 p-8 text-white text-center space-y-6 shadow-2xl">
             <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-amber-400 text-slate-950 shadow-xl shadow-amber-400/20">
@@ -363,14 +346,6 @@ export function TimedQuizPlayer({ mcqs: initialMcqs, chapterTitle }: Props) {
                 className="flex items-center gap-2 rounded-2xl bg-sky-500 px-6 py-3 text-xs font-extrabold text-white hover:bg-sky-400 shadow-md transition"
               >
                 <RotateCcw size={16} /> Retry Quiz
-              </button>
-              <button
-                onClick={generateMoreWithAi}
-                disabled={loadingMoreAi}
-                className="flex items-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-xs font-extrabold text-white hover:bg-purple-500 shadow-md transition"
-              >
-                {loadingMoreAi ? <LoaderCircle className="animate-spin" size={16} /> : <Bot size={16} />}
-                Generate 10 More Fresh MCQs with AI
               </button>
               <button
                 onClick={() => setReviewMode(!reviewMode)}

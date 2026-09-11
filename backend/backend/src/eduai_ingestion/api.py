@@ -13,7 +13,7 @@ from .models import SyllabusQuery
 from .service import SyllabusIngestionService
 from .studypack import StudyPackQualityGate, generate_deterministic_study_pack
 
-app = FastAPI(title="EduAI Curriculum & Study Pack API", version="1.2.0")
+app = FastAPI(title="EduAI Curriculum & Study Pack API", version="2.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -33,7 +33,7 @@ def serialize(snapshot: Any) -> dict[str, Any]:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok", "service": "eduai-curriculum-api", "version": "1.2.0"}
+    return {"status": "ok", "service": "eduai-curriculum-api", "version": "2.1.0"}
 
 
 @app.get("/v1/curriculum/search")
@@ -98,4 +98,3 @@ async def report_issue(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
 
 def run() -> None:
     uvicorn.run("eduai_ingestion.api:app", host="0.0.0.0", port=8000, reload=True)
-

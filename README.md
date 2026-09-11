@@ -1,11 +1,13 @@
-# EduAI — Version 1.1
+# EduAI — Version 2.1
 
-This is the first working foundation of the EduAI teacher portal. It contains:
+EduAI 2.1 is a syllabus-catalogue and chapter-practice prototype. Its student
+experience is intentionally focused: chapter notes, EduAI Tutor, a timed quiz,
+spaced flashcards, and practice questions.
 
 - `frontend/` — Next.js and Tailwind curriculum-explorer dashboard.
 - `backend/` — Python/FastAPI DIKSHA client, ingestion API, CLI, tests, and Supabase migration.
-- `ROADMAP.md` — revised, free-first implementation plan.
-- `TESTER_HANDOFF_V1.1.md` — exact V1.1 setup and verification checklist.
+- `ROADMAP.md` — free-first delivery plan and the 2.1 safety baseline.
+- `TESTER_HANDOFF_V2.1.md` — exact 2.1 setup and verification checklist.
 
 ## Run locally
 
@@ -25,12 +27,18 @@ npm install
 npm run dev
 ```
 
-Visit `http://localhost:3000` and select a board, grade, and subject. The
-dashboard includes a built-in DIKSHA search bridge, so the preview works with
-the frontend alone. Add `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000` to
-use the Python service instead. Add `DIKSHA_API_KEY` and
-`DIKSHA_CHANNEL_ID` in `backend/.env` only when framework-taxonomy access has
-been approved.
+Visit `http://localhost:3000` and select a listed board, grade, and subject.
+The chapter picker only exposes combinations maintained in the local catalogue;
+it does not invent a fallback chapter list. Use the source link in the picker
+to open the official NCERT or Maharashtra Balbharati textbook catalogue.
+
+Only the CBSE Class 10 Mathematics “Real Numbers” study pack is currently
+reviewed for the in-app practice flow. Other catalogue entries remain visible
+but deliberately do not generate study material until their current textbook
+content has been reviewed. This is a safety constraint, not an API error.
+
+The Python DIKSHA ingestion service remains available for future approved
+curriculum imports. It is not the authority for the 2.1 student UI.
 
 ## Supabase
 

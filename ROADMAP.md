@@ -1,5 +1,27 @@
 # EduAI delivery roadmap — shortest free path
 
+## Version 2.2 — current: Teacher Dashboard & Premium UX
+
+- Teacher Portal at `/teacher` with study pack review queue, inline content editor,
+  approve & publish workflow, and issue reports management.
+- Premium Inter font, smooth entrance animations, confetti on A+ quiz scores,
+  animated gradient borders, and glassmorphism cards.
+- All classes from Class 1 to Class 12 supported across CBSE and Maharashtra Board.
+
+## Version 2.1 — multi-class expansion (completed)
+
+- Student UI reduced to notes, EduAI Tutor, timed practice, flashcards, and
+  high-priority practice questions.
+- Removed student-facing teacher publishing, quality claims, trivia, placeholder
+  videos, cache badges, and unsupported “official/verified” marketing labels.
+- The chapter selector never substitutes another board, class, or subject when
+  a selection is unavailable.
+- NCERT and Maharashtra Balbharati textbook catalogues are linked as the source
+  of truth. Chapter-level learning packs must be reviewed against those sources
+  before release; only CBSE Class 10 Mathematics “Real Numbers” is enabled.
+- The next delivery priority is a repeatable, teacher-reviewed ingestion process
+  for every enabled chapter—not more AI-generated features.
+
 ## Product rule
 
 EduAI can be free for learners, but no third-party service offers an unlimited

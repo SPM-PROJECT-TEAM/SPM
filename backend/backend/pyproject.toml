@@ -1,6 +1,6 @@
 [project]
 name = "eduai-ingestion"
-version = "0.1.0"
+version = "2.1.0"
 description = "DIKSHA curriculum ingestion service for EduAI"
 requires-python = ">=3.11"
 dependencies = [

@@ -11,22 +11,99 @@ export async function POST(request: NextRequest) {
 
     const cleanTitle = chapter_title || "Chapter Source Material";
     const apiKey = process.env.GEMINI_API_KEY;
+    const lowerQ = question.trim().toLowerCase();
 
-    if (apiKey) {
-      try {
-        const systemPrompt = `You are Google NotebookLM AI Tutor, an expert AI teacher for school students.
-You are grounded in the official textbook source material for:
-Board: ${board || "CBSE"} | Grade: ${grade || "Class 10"} | Subject: ${subject || "Mathematics"}
-Chapter: "${cleanTitle}"
-Official Source Notes: ${JSON.stringify(short_notes || {})}
+    // -------------------------------------------------------------------------
+    // 0. INTENT DETECTION: GREETING & CONVERSATIONAL SMALL TALK
+    // -------------------------------------------------------------------------
+    const isGreeting =
+      ["hi", "hello", "hey", "hlo", "hiii", "heyya", "good morning", "good afternoon", "good evening", "namaste"].includes(lowerQ) ||
+      lowerQ.startsWith("hi ") ||
+      lowerQ.startsWith("hello ") ||
+      lowerQ.startsWith("hey ");
+
+    const isIdentity =
+      lowerQ.includes("who are you") ||
+      lowerQ.includes("what can you do") ||
+      lowerQ.includes("what is your name") ||
+      lowerQ.includes("help me");
+
+    const isThanks =
+      lowerQ.includes("thank") ||
+      lowerQ.includes("thx") ||
+      lowerQ.includes("awesome") ||
+      lowerQ.includes("great job") ||
+      lowerQ.includes("perfect");
+
+    if (isGreeting || isIdentity) {
+      const conceptsSample = short_notes?.key_concepts
+        ? short_notes.key_concepts.slice(0, 2).map((c: string) => `• ${c}`).join("\n")
+        : `• Key principles and definitions of ${cleanTitle}`;
+
+      const greetingResponse =
+        `Hello! I am your AI Tutor Agent for ${cleanTitle} (${board || "CBSE"} ${grade || "Class 10"} ${subject || "Mathematics"}).\n\n` +
+        `I am here to assist you with deep concept explanations, step-by-step problem solving, and exam preparation. Here are a few ways we can work together:\n\n` +
+        `1. Concept Explanations:\n${conceptsSample}\n\n` +
+        `2. Step-by-Step Numericals: Complete formula derivations and algebraic working.\n` +
+        `3. Interactive Quiz: Type "Quiz me" to test your understanding with instant feedback.\n` +
+        `4. Board Exam Tips: Learn key traps and scoring strategies for this chapter.\n\n` +
+        `What specific concept or question would you like to explore?`;
+
+      return NextResponse.json({ answer: greetingResponse, source: "eduai-tutor-agent" });
+    }
+
+    if (isThanks) {
+      return NextResponse.json({
+        answer: `You're very welcome! I'm glad that helped. Feel free to ask any follow-up questions on ${cleanTitle} whenever you're ready!`,
+        source: "eduai-tutor-agent",
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. INTENT DETECTION: INTERACTIVE QUIZ REQUEST
+    // -------------------------------------------------------------------------
+    const isQuizRequest =
+      lowerQ.includes("quiz me") ||
+      lowerQ.includes("test me") ||
+      lowerQ.includes("ask me a question") ||
+      lowerQ.includes("test my knowledge");
+
+    if (isQuizRequest) {
+      const concepts = short_notes?.key_concepts || [];
+      const topicToQuiz = concepts.length > 0 ? concepts[Math.floor(Math.random() * concepts.length)] : cleanTitle;
+      const cleanConceptTopic = topicToQuiz.split(":")[0] || cleanTitle;
+
+      const quizResponse =
+        `Practice Quiz Question — ${cleanTitle}\n\n` +
+        `Topic: ${cleanConceptTopic}\n\n` +
+        `Question: Explain the fundamental principle behind ${cleanConceptTopic} and state the primary formula or condition applied when solving textbook problems on this topic.\n\n` +
+        `Reply with your answer below, and I will evaluate your response step-by-step!`;
+
+      return NextResponse.json({ answer: quizResponse, source: "eduai-tutor-agent" });
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. LLM CALL (GEMINI / POLLINATIONS) WITH TIMEOUTS & REFINED SYSTEM PROMPT
+    // -------------------------------------------------------------------------
+    const systemPrompt = `You are EduAI Tutor Agent, a world-class, highly articulate, patient, and professional AI tutor for school students in India.
+You specialize in ${board || "CBSE"} ${grade || "Class 10"} ${subject || "Mathematics"} — Chapter: "${cleanTitle}".
+
+Chapter Context:
+${JSON.stringify(short_notes || {})}
 
 Student Question: "${question}"
 
-Instructions:
-- Provide an accurate, mathematically and scientifically precise, step-by-step NotebookLM response grounded in the textbook chapter.
-- Use exact textbook formulas (e.g. 1/f = 1/v + 1/u, HCF × LCM = a × b, V = IR, Cramer's Rule D = ax + by).
-- Explain step-by-step with clear formatting, LaTeX math ($$ ... $$) for equations, bold key terms, and bullet points.
-- Keep the tone encouraging, crystal clear, professional, and 100% accurate.`;
+Guidelines:
+1. Speak in a refined, professional, and clear tone (like a top-tier private tutor).
+2. Never output raw markdown clutter like raw asterisks or unrendered formatting symbols.
+3. For Math/Physics: Provide Given Parameters → Governing Formula → Step-by-Step Working → Final Answer with SI Units.
+4. For Theory: Provide Direct Answer → Core Principles → Examples → Exam Tips.
+5. Keep explanations thorough, elegant, articulate, and accurate for ${grade} level.`;
+
+    if (apiKey) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
 
         const res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -34,8 +111,10 @@ Instructions:
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt }] }] }),
+            signal: controller.signal,
           }
         );
+        clearTimeout(timeoutId);
 
         if (res.ok) {
           const data = await res.json();
@@ -45,74 +124,96 @@ Instructions:
           }
         }
       } catch (err) {
-        console.warn("Gemini Flash API request failed, falling back to NotebookLM engine", err);
+        console.warn("Gemini API request timed out or failed", err);
       }
     }
 
-    // Dynamic NotebookLM Fallback Engine with step-by-step textbook calculations
-    const lowerQ = question.toLowerCase();
-    const lowerTitle = cleanTitle.toLowerCase();
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      const polRes = await fetch("https://text.pollinations.ai/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: question },
+          ],
+          model: "openai",
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (polRes.ok) {
+        const polText = await polRes.text();
+        if (polText && polText.length > 20) {
+          return NextResponse.json({ answer: polText, source: "eduai-agent-llm" });
+        }
+      }
+    } catch (polErr) {
+      console.warn("Pollinations AI endpoint timed out or failed", polErr);
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. REFINED REASONING ENGINE (GROUNDED & ELEGANT)
+    // -------------------------------------------------------------------------
     let answerText = "";
+    const keyConcepts = short_notes?.key_concepts || [];
+    const formulasDefs = short_notes?.formulas_and_definitions || [];
+    const summary = short_notes?.summary || "";
+    const recapPoints = short_notes?.recap_points || [];
 
-    if (lowerTitle.includes("linear equation")) {
-      if (lowerQ.includes("cramer") || lowerQ.includes("determinant")) {
-        answerText = `### 📘 NotebookLM Source Analysis: Cramer's Rule (Determinant Method)\n\n` +
-          `In **${cleanTitle}**, Cramer's Rule is used to solve simultaneous linear equations $a_1x + b_1y = c_1$ and $a_2x + b_2y = c_2$ using determinants:\n\n` +
-          `1. **Determinant $D$**:\n` +
-          `$$D = \\begin{vmatrix} a_1 & b_1 \\\\ a_2 & b_2 \\end{vmatrix} = a_1b_2 - a_2b_1$$\n\n` +
-          `2. **Determinant $D_x$** (Replace $x$-coefficients with constants):\n` +
-          `$$D_x = \\begin{vmatrix} c_1 & b_1 \\\\ c_2 & b_2 \\end{vmatrix} = c_1b_2 - c_2b_1$$\n\n` +
-          `3. **Determinant $D_y$** (Replace $y$-coefficients with constants):\n` +
-          `$$D_y = \\begin{vmatrix} a_1 & c_1 \\\\ a_2 & c_2 \\end{vmatrix} = a_1c_2 - a_2c_1$$\n\n` +
-          `4. **Final Solutions**:\n` +
-          `$$x = \\frac{D_x}{D}, \\quad y = \\frac{D_y}{D} \\quad (D \\neq 0)$$\n\n` +
-          `💡 *Key Exam Tip*: If $D = 0$ and $D_x, D_y \\neq 0$, the system has **no solution** (parallel lines).`;
-      } else {
-        answerText = `### 📘 NotebookLM Source Analysis: ${cleanTitle}\n\n` +
-          `Based on the official textbook source material for **${cleanTitle}**, regarding your question: "${question}":\n\n` +
-          `1. **General Form**: An equation of the form $ax + by + c = 0$ where $a, b, c$ are real numbers and $a, b \\neq 0$.\n` +
-          `2. **Solution Methods**:\n` +
-          `   - **Graphical Method**: Find table of values and plot intersecting lines.\n` +
-          `   - **Elimination Method**: Multiply equations to make coefficients equal and eliminate one variable.\n` +
-          `   - **Cramer's Rule**: $x = D_x/D, y = D_y/D$.\n\n` +
-          `Would you like me to walk through a specific numerical step-by-step?`;
-      }
-    } else if (lowerTitle.includes("real number")) {
-      if (lowerQ.includes("hcf") || lowerQ.includes("lcm") || lowerQ.includes("formula")) {
-        answerText = `### 📘 NotebookLM Source Analysis: HCF & LCM Product Theorem\n\n` +
-          `For any two positive integers $a$ and $b$, the Fundamental Theorem of Arithmetic gives:\n\n` +
-          `$$\\text{HCF}(a, b) \\times \\text{LCM}(a, b) = a \\times b$$\n\n` +
-          `**Step-by-Step Numerical Example**:\n` +
-          `- Given $a = 306, b = 657$, with $\\text{HCF} = 9$:\n` +
-          `$$\\text{LCM} = \\frac{a \\times b}{\\text{HCF}} = \\frac{306 \\times 657}{9} = 34 \\times 657 = 22,338$$\n\n` +
-          `💡 *Note*: This identity holds strictly for **two** positive integers!`;
-      } else {
-        answerText = `### 📘 NotebookLM Source Analysis: ${cleanTitle}\n\n` +
-          `Regarding your query: "${question}" in **${cleanTitle}**:\n\n` +
-          `1. **Fundamental Theorem of Arithmetic**: Every composite number can be uniquely factorized into prime factors.\n` +
-          `2. **Irrational Proofs**: Proving $\\sqrt{p}$ is irrational via contradiction ($p \\mid a^2 \\implies p \\mid a$).\n` +
-          `3. **Decimal Expansion**: $p/q$ terminates iff $q = 2^n \\times 5^m$.\n\n` +
-          `Ask any specific problem or derivation!`;
-      }
-    } else if (lowerTitle.includes("light")) {
-      answerText = `### 📘 NotebookLM Source Analysis: Optics & Light Rules\n\n` +
-        `Based on official textbook source material for **${cleanTitle}**:\n\n` +
-        `1. **Mirror Formula**: $\\frac{1}{f} = \\frac{1}{v} + \\frac{1}{u}$ (u is always negative $-u$).\n` +
-        `2. **Snell's Law**: $n = \\frac{\\sin i}{\\sin r} = \\frac{v_1}{v_2}$.\n` +
-        `3. **Lens Power**: $P = \\frac{1}{f(\\text{m})}$ measured in Dioptres ($D$).\n\n` +
-        `Would you like me to calculate an image position numerical for you?`;
+    const matchedFormula = formulasDefs.find((f: any) =>
+      lowerQ.includes(f.term.toLowerCase()) || f.term.toLowerCase().split(" ").some((w: string) => w.length > 3 && lowerQ.includes(w))
+    );
+
+    const matchedConcept = keyConcepts.find((c: string) =>
+      lowerQ.includes(c.toLowerCase().slice(0, 15)) || c.toLowerCase().split(" ").some((w: string) => w.length > 4 && lowerQ.includes(w))
+    );
+
+    if (matchedFormula) {
+      answerText =
+        `${matchedFormula.term} — ${cleanTitle}\n\n` +
+        `Definition & Core Rule:\n` +
+        `${matchedFormula.definition}\n\n` +
+        `Application in ${grade} ${subject}:\n` +
+        `In ${cleanTitle}, ${matchedFormula.term} defines the essential relationship required to solve textbook problems.\n\n` +
+        `Step-by-Step Working Method:\n` +
+        `1. Identify known and unknown variables from the problem statement.\n` +
+        `2. Write down the governing formula clearly.\n` +
+        `3. Perform step-by-step substitution and calculate the final value with units.\n\n` +
+        `Exam Strategy: Stating the formula before calculation ensures full step-marks in board evaluation.`;
+    } else if (matchedConcept) {
+      answerText =
+        `Concept Explanation: ${cleanTitle}\n\n` +
+        `Core Principle:\n` +
+        `${matchedConcept}\n\n` +
+        `Detailed Analysis:\n` +
+        `In ${cleanTitle} (${board} ${grade}), this concept forms a fundamental building block. When approaching questions on this topic:\n` +
+        `• Understand the underlying physical or mathematical definitions.\n` +
+        `• Follow systematic problem-solving steps.\n\n` +
+        `Summary Context:\n` +
+        `${summary}`;
     } else {
-      answerText = `### 📘 NotebookLM Source Analysis: ${cleanTitle}\n\n` +
-        `Based on the grounded textbook source material for **${cleanTitle}** (${subject}):\n\n` +
-        `1. **Core Concept**: "${question}" is addressed using official textbook principles.\n` +
-        `2. **Step 1**: State given parameters with standard SI units.\n` +
-        `3. **Step 2**: Apply the primary formula before simplifying.\n\n` +
-        `Feel free to ask for step-by-step derivations or numerical calculations!`;
+      answerText =
+        `EduAI Tutor Analysis — ${cleanTitle}\n\n` +
+        `Overview:\n` +
+        `Regarding "${question}" in ${cleanTitle} (${board || "CBSE"} ${grade || "Class 10"} ${subject || "Mathematics"}):\n\n` +
+        `${summary || `This chapter establishes foundational principles and mathematical/scientific problem-solving rules.`}\n\n` +
+        `Key Rules & Definitions:\n` +
+        `${formulasDefs.length > 0 ? formulasDefs.slice(0, 3).map((f: any) => `• ${f.term}: ${f.definition}`).join("\n") : `• Focus on core textbook definitions and standard equations.`}\n\n` +
+        `Problem-Solving Guidance:\n` +
+        `1. Identify given quantities and target variables.\n` +
+        `2. Select and state the appropriate formula.\n` +
+        `3. Substitute values carefully and verify final units.\n\n` +
+        (recapPoints.length > 0 ? `Exam Tip: ${recapPoints[0]}` : `Exam Tip: Always double-check sign rules and SI unit conversions.`);
     }
 
-    return NextResponse.json({ answer: answerText, source: "notebooklm-grounded-engine" });
+    return NextResponse.json({ answer: answerText, source: "eduai-tutor-agent" });
   } catch (error) {
-    console.error("NotebookLM chat API error", error);
+    console.error("EduAI Tutor chat API error", error);
     return NextResponse.json({ detail: "Invalid request payload" }, { status: 400 });
   }
 }

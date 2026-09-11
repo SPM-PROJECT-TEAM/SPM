@@ -5,6 +5,7 @@ import {
   BookOpen,
   Bot,
   CheckCircle2,
+  Copy,
   FileText,
   HelpCircle,
   Lightbulb,
@@ -12,6 +13,7 @@ import {
   MessageSquare,
   Send,
   Sparkles,
+  Volume2,
   Zap,
 } from "lucide-react";
 import type { StudyPack } from "../api/studypack/generate/route";
@@ -27,22 +29,50 @@ export function NotebookLMAssistant({ pack }: { pack: StudyPack }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: "ai",
-      text: `Welcome to Google NotebookLM Studio for **${pack.chapter_title}**!\n\nI am grounded in your official textbook source material for **${pack.board} ${pack.grade} — ${pack.subject}**.\n\nAsk me anything about formulas, derivations, or step-by-step problem solving for this chapter!`,
+      text: `Hello! I am your EduAI Tutor Agent for ${pack.chapter_title} (${pack.board} ${pack.grade} · ${pack.subject}).\n\nI am ready to assist you with deep concept breakdowns, step-by-step numerical derivations, or interactive practice quizzes. How can I help you today?`,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      source: "NotebookLM Source Grounding Engine",
+      source: "EduAI Tutor Agent",
     },
   ]);
 
   const [inputQuery, setInputQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [sourceGuideTab, setSourceGuideTab] = useState<"summary" | "concepts" | "formulas" | "faqs">("summary");
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+
+  // Dynamically generate recommendations strictly related to the selected chapter
+  const firstTerm = pack.short_notes.formulas_and_definitions[0]?.term || pack.chapter_title;
+  const secondTerm = pack.short_notes.formulas_and_definitions[1]?.term || "Key Formula";
+  const conceptTopic = pack.short_notes.key_concepts[0]?.split(":")[0] || pack.chapter_title;
 
   const promptChips = [
-    "Explain Cramer's Rule with example ✏️",
-    "Show step-by-step formula derivation 📐",
-    "What are common exam traps in this chapter? ⚠️",
-    "Give me 3 practice problems with solutions 📝",
+    `Explain ${firstTerm} with step-by-step example ✏️`,
+    `Show formula derivation for ${secondTerm} 📐`,
+    `What are common exam traps in ${pack.chapter_title}? ⚠️`,
+    `Give me 3 practice problems on ${conceptTopic} 📝`,
   ];
+
+  function speakText(text: string, index: number) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (speakingIndex === index) {
+      window.speechSynthesis.cancel();
+      setSpeakingIndex(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/[*#>`_]/g, "").replace(/\$\$[\s\S]*?\$\$/g, "formula");
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.0;
+    utterance.onend = () => setSpeakingIndex(null);
+    utterance.onerror = () => setSpeakingIndex(null);
+    setSpeakingIndex(index);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+  }
 
   async function handleSend(queryToSubmit?: string) {
     const textToSend = queryToSubmit || inputQuery;
@@ -78,12 +108,16 @@ export function NotebookLMAssistant({ pack }: { pack: StudyPack }) {
         sender: "ai",
         text: data.answer || "I have analyzed your chapter source document. Ask any specific question!",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        source: data.source === "gemini-1.5-flash" ? "Gemini 1.5 Flash (Free Tier API)" : "NotebookLM Source Grounding Engine",
+        source: data.source?.includes("gemini")
+          ? "Gemini AI Model"
+          : data.source?.includes("llm") || data.source?.includes("pollinations")
+          ? "EduAI High-Capacity Model"
+          : "EduAI Tutor Agent",
       };
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
-      console.error("Failed to query NotebookLM AI Assistant", err);
+      console.error("Failed to query EduAI Tutor Agent", err);
       setMessages((prev) => [
         ...prev,
         {
@@ -108,18 +142,37 @@ export function NotebookLMAssistant({ pack }: { pack: StudyPack }) {
           <div>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-sky-100 px-3 py-0.5 text-[11px] font-extrabold text-sky-800 border border-sky-200">
-                Google NotebookLM Studio
-              </span>
-              <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                <Zap size={10} /> Gemini 1.5 Flash API Connected
+                EduAI Tutor Agent
               </span>
             </div>
             <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">{pack.chapter_title}</h3>
           </div>
         </div>
+
+        {/* Quick Action Toolbar */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => handleSend("Hi")}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-sky-50 hover:border-sky-300 transition"
+          >
+            👋 Say Hi
+          </button>
+          <button
+            onClick={() => handleSend("Quiz me on this chapter")}
+            className="rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-800 hover:bg-purple-100 transition shadow-xs"
+          >
+            📝 Quiz Me
+          </button>
+          <button
+            onClick={() => handleSend(`Explain ${firstTerm}`)}
+            className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100 transition shadow-xs"
+          >
+            📖 Concept
+          </button>
+        </div>
       </div>
 
-      {/* NOTEBOOKLM 2-COLUMN STUDIO LAYOUT */}
+      {/* TUTOR 2-COLUMN STUDY LAYOUT */}
       <div className="grid gap-6 lg:grid-cols-12 items-start">
         {/* LEFT COLUMN: CHAPTER SOURCE GROUNDING PANEL */}
         <div className="lg:col-span-4 rounded-3xl border border-slate-200 bg-white p-5 space-y-4 shadow-md">
@@ -200,10 +253,10 @@ export function NotebookLMAssistant({ pack }: { pack: StudyPack }) {
             )}
           </div>
 
-          {/* Prompt Chips in Source Panel */}
+          {/* Chapter-Specific Prompt Chips in Source Panel */}
           <div>
             <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
-              Suggested Source Prompts
+              Recommended Chapter Prompts
             </label>
             <div className="space-y-1.5">
               {promptChips.map((chip, idx) => (
@@ -223,7 +276,7 @@ export function NotebookLMAssistant({ pack }: { pack: StudyPack }) {
         {/* RIGHT COLUMN: INTERACTIVE AI CHAT STUDIO */}
         <div className="lg:col-span-8 space-y-4">
           {/* Chat Messages Log */}
-          <div className="min-h-[400px] max-h-[500px] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-5 space-y-4 shadow-md">
+          <div className="min-h-[420px] max-h-[520px] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-5 space-y-4 shadow-md">
             {messages.map((msg, idx) => (
               <div
                 key={idx}
@@ -231,23 +284,44 @@ export function NotebookLMAssistant({ pack }: { pack: StudyPack }) {
               >
                 {msg.sender === "ai" && (
                   <div className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-sky-600 text-white font-extrabold text-xs shadow-md">
-                    LM
+                    AI
                   </div>
                 )}
 
                 <div
-                  className={`max-w-[85%] rounded-3xl p-4 text-xs leading-relaxed space-y-2 ${
+                  className={`max-w-[88%] rounded-3xl p-4 text-xs leading-relaxed space-y-2 relative group ${
                     msg.sender === "user"
                       ? "bg-sky-600 text-white rounded-tr-xs shadow-md font-medium"
                       : "bg-slate-50 text-slate-900 border border-slate-200 rounded-tl-xs shadow-xs"
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[10px] opacity-75 mb-1 gap-2">
-                    <span className="font-extrabold">{msg.sender === "user" ? "Student" : "NotebookLM AI Tutor"}</span>
-                    <span>{msg.timestamp}</span>
+                  <div className="flex items-center justify-between text-[10px] opacity-75 mb-1 gap-2 border-b border-slate-200/40 pb-1">
+                    <span className="font-extrabold">{msg.sender === "user" ? "Student" : "EduAI Tutor Agent"}</span>
+                    <div className="flex items-center gap-2">
+                      {msg.sender === "ai" && (
+                        <>
+                          <button
+                            onClick={() => speakText(msg.text, idx)}
+                            className={`p-1 rounded hover:bg-slate-200 transition ${speakingIndex === idx ? "text-sky-600 font-bold animate-pulse" : ""}`}
+                            title="Read Aloud"
+                          >
+                            <Volume2 size={13} />
+                          </button>
+                          <button
+                            onClick={() => copyToClipboard(msg.text)}
+                            className="p-1 rounded hover:bg-slate-200 transition text-slate-500 hover:text-slate-800"
+                            title="Copy Response"
+                          >
+                            <Copy size={13} />
+                          </button>
+                        </>
+                      )}
+                      <span>{msg.timestamp}</span>
+                    </div>
                   </div>
 
-                  <p className="whitespace-pre-line text-xs font-medium leading-relaxed">{msg.text}</p>
+                  {/* Clean Formatted Message Renderer (No raw asterisks or clutter) */}
+                  <FormattedMessage text={msg.text} isUser={msg.sender === "user"} />
 
                   {msg.source && (
                     <div className="pt-2 border-t border-slate-200/50 text-[10px] font-bold text-sky-700 flex items-center gap-1">
@@ -265,9 +339,9 @@ export function NotebookLMAssistant({ pack }: { pack: StudyPack }) {
             ))}
 
             {loading && (
-              <div className="flex items-center gap-3 text-xs text-sky-700 font-bold bg-sky-50 p-3 rounded-2xl border border-sky-100">
+              <div className="flex items-center gap-3 text-xs text-sky-700 font-bold bg-sky-50 p-3 rounded-2xl border border-sky-100 animate-pulse">
                 <LoaderCircle className="animate-spin text-sky-600" size={18} />
-                <span>NotebookLM Gemini Flash API is analyzing chapter source document...</span>
+                <span>EduAI Tutor Agent is synthesizing a clear, professional answer...</span>
               </div>
             )}
           </div>
@@ -276,7 +350,7 @@ export function NotebookLMAssistant({ pack }: { pack: StudyPack }) {
           <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-md flex items-center gap-2">
             <input
               type="text"
-              placeholder={`Ask NotebookLM about ${pack.chapter_title} (e.g. formulas, proofs, numerical steps)...`}
+              placeholder={`Ask EduAI Tutor Agent about ${pack.chapter_title}... (e.g. "hi", "quiz me", "explain formula")`}
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
@@ -289,11 +363,108 @@ export function NotebookLMAssistant({ pack }: { pack: StudyPack }) {
               className="flex items-center gap-1.5 rounded-xl bg-sky-600 px-5 py-2.5 text-xs font-extrabold text-white hover:bg-sky-500 disabled:opacity-50 shadow-md transition"
             >
               {loading ? <LoaderCircle className="animate-spin" size={16} /> : <Send size={16} />}
-              Ask AI
+              Ask Agent
             </button>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+/**
+ * Clean UI Formatted Message Component
+ * Removes raw markdown asterisks, hashes, and symbols, rendering clean headings, bold text, and math boxes!
+ */
+function FormattedMessage({ text, isUser }: { text: string; isUser: boolean }) {
+  if (isUser) {
+    return <p className="text-xs font-medium leading-relaxed">{text}</p>;
+  }
+
+  const lines = text.split("\n");
+
+  return (
+    <div className="space-y-2 text-xs text-slate-800 leading-relaxed font-normal">
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={i} className="h-1" />;
+
+        // Header lines (### Header or Header:)
+        if (trimmed.startsWith("###") || trimmed.startsWith("##") || trimmed.startsWith("#")) {
+          const headerText = trimmed.replace(/^[#\s]+/, "").replace(/[*_]/g, "");
+          return (
+            <h4 key={i} className="text-xs font-extrabold text-sky-900 uppercase tracking-wider mt-3 mb-1 border-b border-sky-100 pb-0.5">
+              {headerText}
+            </h4>
+          );
+        }
+
+        // Exam Tip / Callout
+        if (trimmed.toLowerCase().includes("tip:") || trimmed.toLowerCase().includes("exam strategy:")) {
+          const cleanTip = trimmed.replace(/[*_]/g, "");
+          return (
+            <div key={i} className="rounded-xl border border-amber-200 bg-amber-50/90 p-2.5 text-[11px] font-semibold text-amber-950 my-2 shadow-xs">
+              💡 {cleanTip}
+            </div>
+          );
+        }
+
+        // Bullet points (• or - or 1.)
+        if (trimmed.startsWith("•") || trimmed.startsWith("-") || /^\d+\./.test(trimmed)) {
+          const content = trimmed.replace(/^[\textbullet\-\d\.]+\s*/, "");
+          return (
+            <div key={i} className="flex items-start gap-2 my-1 pl-1">
+              <span className="text-sky-600 font-bold shrink-0 mt-0.5">•</span>
+              <span>{parseInlineStyles(content)}</span>
+            </div>
+          );
+        }
+
+        // Blockquotes (> text)
+        if (trimmed.startsWith(">")) {
+          const content = trimmed.replace(/^>\s*/, "");
+          return (
+            <div key={i} className="rounded-xl bg-sky-50 border-l-4 border-sky-600 p-2.5 my-2 text-xs font-medium text-sky-950">
+              {parseInlineStyles(content)}
+            </div>
+          );
+        }
+
+        return <p key={i}>{parseInlineStyles(trimmed)}</p>;
+      })}
+    </div>
+  );
+}
+
+/**
+ * Parse inline bold (**text**), code (`text`), and math ($formula$) cleanly without showing raw symbols
+ */
+function parseInlineStyles(str: string) {
+  // Strip raw asterisks and hashes cleanly
+  const parts = str.split(/(\*\*.*?\*\*|\$.*?\$|`.*?`)/g);
+
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={index} className="font-extrabold text-slate-900">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("$") && part.endsWith("$")) {
+      return (
+        <code key={index} className="rounded-md bg-sky-100 px-1.5 py-0.5 font-mono text-[11px] text-sky-900 border border-sky-200">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={index} className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-800">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return part;
+  });
 }

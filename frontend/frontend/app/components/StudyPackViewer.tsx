@@ -11,7 +11,6 @@ import {
   ChevronDown,
   ChevronRight,
   Flag,
-  Gamepad2,
   Layers,
   Lightbulb,
   RotateCcw,
@@ -19,17 +18,11 @@ import {
   Star,
   Target,
   Trophy,
-  UserCheck,
-  Video,
-  Zap,
 } from "lucide-react";
 import type { StudyPack } from "../api/studypack/generate/route";
 import { NotebookLMAssistant } from "./NotebookLMAssistant";
 import { TimedQuizPlayer } from "./TimedQuizPlayer";
-import { TriviaGameTemplate } from "./TriviaGameTemplate";
 import { SpacedRepetitionDeck } from "./SpacedRepetitionDeck";
-import { VideoTutorialHub } from "./VideoTutorialHub";
-import { TeacherReviewHub } from "./TeacherReviewHub";
 
 interface Props {
   pack: StudyPack;
@@ -37,9 +30,7 @@ interface Props {
 }
 
 export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
-  const [activeTab, setActiveTab] = useState<
-    "notes" | "notebooklm" | "timed_quiz" | "flashcards" | "trivia" | "practice" | "videos" | "teacher" | "quality"
-  >("notes");
+  const [activeTab, setActiveTab] = useState<"notes" | "tutor" | "timed_quiz" | "flashcards" | "practice">("notes");
 
   // Practice accordion state
   const [expandedPq, setExpandedPq] = useState<Record<string, boolean>>({});
@@ -89,16 +80,13 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
               <span className="rounded-full bg-purple-100 px-3 py-1 text-purple-800 border border-purple-200">
                 {pack.subject}
               </span>
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-emerald-800 border border-emerald-200">
-                <Zap size={13} /> Server Cached (v{pack.version})
-              </span>
             </div>
 
             <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
               {pack.chapter_title}
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-slate-500 font-medium">
-              NotebookLM Studio: Grounded Notes · Dynamic AI Tutor · Premium Quiz · Spaced Flashcards · Practice Qs
+              Guided notes · EduAI Tutor · Timed quiz · Spaced flashcards · Practice questions
             </p>
           </div>
 
@@ -111,24 +99,16 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
                 ← Change Chapter
               </button>
             )}
-            <button
-              onClick={() => setActiveTab("teacher")}
-              className="flex items-center gap-1.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition shadow-sm"
-            >
-              <UserCheck size={16} /> Teacher Hub
-            </button>
           </div>
         </div>
 
         {/* Tab Navigation */}
         <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
           <TabButton active={activeTab === "notes"} onClick={() => setActiveTab("notes")} icon={<BookOpen size={16} />} label="Short Notes" accent="sky" />
-          <TabButton active={activeTab === "notebooklm"} onClick={() => setActiveTab("notebooklm")} icon={<Bot size={16} />} label="NotebookLM AI Studio" badge="Ask AI" accent="sky" />
+          <TabButton active={activeTab === "tutor"} onClick={() => setActiveTab("tutor")} icon={<Bot size={16} />} label="EduAI Tutor" badge="Ask AI" accent="sky" />
           <TabButton active={activeTab === "timed_quiz"} onClick={() => setActiveTab("timed_quiz")} icon={<Target size={16} />} label="Timed Quiz" accent="emerald" />
           <TabButton active={activeTab === "flashcards"} onClick={() => setActiveTab("flashcards")} icon={<Layers size={16} />} label="Spaced Flashcards" accent="amber" />
-          <TabButton active={activeTab === "trivia"} onClick={() => setActiveTab("trivia")} icon={<Gamepad2 size={16} />} label="Trivia Game" accent="purple" />
           <TabButton active={activeTab === "practice"} onClick={() => setActiveTab("practice")} icon={<Star size={16} />} label="High-Priority Qs" accent="rose" />
-          <TabButton active={activeTab === "videos"} onClick={() => setActiveTab("videos")} icon={<Video size={16} />} label="Videos" accent="rose" />
         </div>
       </div>
 
@@ -165,7 +145,7 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
 
                 <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-md">
                   <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                    <Award className="text-amber-500" size={20} /> Formulas & Definitions
+                    <Award className="text-amber-500" size={20} /> Key Terms, Formulas & Definitions
                   </h3>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     {pack.short_notes.formulas_and_definitions.map((item, idx) => (
@@ -195,13 +175,13 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
 
                 <div className="rounded-3xl border border-sky-200 bg-gradient-to-b from-sky-50 to-indigo-50 p-5 text-center shadow-sm">
                   <Bot className="mx-auto text-sky-600" size={32} />
-                  <h4 className="mt-2 text-sm font-bold text-slate-900">NotebookLM AI Studio</h4>
-                  <p className="mt-1 text-xs text-slate-600">Ask any question grounded in your official textbook source!</p>
+                  <h4 className="mt-2 text-sm font-bold text-slate-900">EduAI Tutor</h4>
+                  <p className="mt-1 text-xs text-slate-600">Ask for a clear explanation, worked example, or revision help.</p>
                   <button
-                    onClick={() => setActiveTab("notebooklm")}
+                    onClick={() => setActiveTab("tutor")}
                     className="mt-4 w-full rounded-2xl bg-sky-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-sky-500 shadow-md transition"
                   >
-                    Open NotebookLM Studio 🤖
+                    Ask EduAI Tutor 🤖
                   </button>
                 </div>
               </div>
@@ -210,17 +190,17 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
             {/* Bottom Next Step Button */}
             <div className="flex justify-end pt-4 border-t border-slate-200">
               <button
-                onClick={() => setActiveTab("notebooklm")}
+                onClick={() => setActiveTab("tutor")}
                 className="flex items-center gap-2 rounded-2xl bg-sky-600 px-6 py-3 text-xs font-bold text-white hover:bg-sky-500 shadow-md transition"
               >
-                Next Step: NotebookLM AI Studio 🤖 ➔
+                Next Step: Ask EduAI Tutor 🤖 ➔
               </button>
             </div>
           </div>
         )}
 
-        {/* NOTEBOOKLM AI ASSISTANT TAB */}
-        {activeTab === "notebooklm" && <NotebookLMAssistant pack={pack} />}
+        {/* EDUAI TUTOR TAB */}
+        {activeTab === "tutor" && <NotebookLMAssistant pack={pack} />}
 
         {/* TIMED QUIZ TAB */}
         {activeTab === "timed_quiz" && (
@@ -241,21 +221,6 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
         {activeTab === "flashcards" && (
           <div className="space-y-6">
             <SpacedRepetitionDeck flashcards={pack.flashcards} chapterTitle={pack.chapter_title} cacheKey={pack.cache_key} />
-            <div className="flex justify-end pt-4 border-t border-slate-200">
-              <button
-                onClick={() => setActiveTab("trivia")}
-                className="flex items-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-xs font-bold text-white hover:bg-purple-500 shadow-md transition"
-              >
-                Next Step: Trivia Game ➔
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* TRIVIA GAME TAB */}
-        {activeTab === "trivia" && (
-          <div className="space-y-6">
-            <TriviaGameTemplate mcqs={pack.mcqs} chapterTitle={pack.chapter_title} />
             <div className="flex justify-end pt-4 border-t border-slate-200">
               <button
                 onClick={() => setActiveTab("practice")}
@@ -343,36 +308,6 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
           </div>
         )}
 
-        {/* VIDEO TUTORIALS TAB */}
-        {activeTab === "videos" && <VideoTutorialHub pack={pack} />}
-
-        {/* TEACHER HUB TAB */}
-        {activeTab === "teacher" && <TeacherReviewHub pack={pack} />}
-
-        {/* QUALITY GATE TAB */}
-        {activeTab === "quality" && (
-          <div className="rounded-3xl border border-emerald-200 bg-white p-6 shadow-md space-y-6">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="text-emerald-600" size={28} />
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">EduAI Quality Gate Validation Matrix</h3>
-                <p className="text-xs text-slate-500 font-medium">Validation status for Study Pack v{pack.version}</p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <QualityMetric label="Valid JSON Schema" status="PASS" detail="Fully typed StudyPack interface" />
-              <QualityMetric label="MCQ Count Requirement" status="PASS" detail="Exactly 10 MCQs validated" />
-              <QualityMetric label="Answer Options" status="PASS" detail="Exactly 4 options per MCQ" />
-              <QualityMetric label="Correct Answer Index" status="PASS" detail="Exactly 1 valid correct option (0-3)" />
-              <QualityMetric label="Explanations & Difficulty" status="PASS" detail="100% question coverage" />
-              <QualityMetric label="High-Priority Questions" status="PASS" detail="Exactly 10 practice questions ranked" />
-              <QualityMetric label="Duplicate Question Check" status="PASS" detail="Zero duplicate questions found" />
-              <QualityMetric label="Source Traceability" status="PASS" detail={`Source ID: ${pack.source_identifier}`} />
-              <QualityMetric label="Server Cache Key" status="PASS" detail={pack.cache_key} />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* REPORT ISSUE MODAL */}
@@ -481,19 +416,5 @@ function TabButton({
         </span>
       )}
     </button>
-  );
-}
-
-function QualityMetric({ label, status, detail }: { label: string; status: string; detail: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-800">{label}</span>
-        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800">
-          {status}
-        </span>
-      </div>
-      <p className="mt-2 text-xs font-mono text-slate-500 truncate">{detail}</p>
-    </div>
   );
 }

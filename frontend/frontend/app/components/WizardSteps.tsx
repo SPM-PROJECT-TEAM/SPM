@@ -23,14 +23,12 @@ import {
 } from "lucide-react";
 import { StudyPackViewer } from "./StudyPackViewer";
 import type { StudyPack } from "../api/studypack/generate/route";
-import { getOfficialChapters, type ChapterInfo } from "../data/textbookTaxonomy";
-
-const SUBJECTS_BY_STREAM: Record<string, string[]> = {
-  Science: ["Mathematics Part 1", "Mathematics Part 2", "Physics", "Chemistry", "Biology"],
-  Commerce: ["Accountancy", "Business Studies", "Economics", "Mathematics Part 1"],
-  Arts: ["History", "Political Science", "Geography", "Economics"],
-  General: ["Mathematics Part 1", "Mathematics Part 2", "Science & Technology Part 1", "Science & Technology Part 2", "English", "Social Science"],
-};
+import {
+  getAvailableGrades,
+  getAvailableSubjects,
+  getSyllabusChapters,
+  type ChapterInfo,
+} from "../data/textbookTaxonomy";
 
 export function WizardSteps() {
   // Wizard Step state: 1 = Setup, 2 = Select Chapter, 3 = Study Mode
@@ -40,29 +38,35 @@ export function WizardSteps() {
   const [board, setBoard] = useState<"CBSE" | "Maharashtra">("CBSE");
   const [grade, setGrade] = useState("Class 10");
   const [stream, setStream] = useState<"Science" | "Commerce" | "Arts">("Science");
-  const [subject, setSubject] = useState("Mathematics Part 1");
+  const [subject, setSubject] = useState("Mathematics");
 
   // Step 2 State
   const [chapters, setChapters] = useState<ChapterInfo[]>([]);
-  const [customChapter, setCustomChapter] = useState("");
-
   // Step 3 State
   const [studyPack, setStudyPack] = useState<StudyPack | null>(null);
   const [generatingPack, setGeneratingPack] = useState(false);
 
   const isSeniorSecondary = grade === "Class 11" || grade === "Class 12";
-  const activeSubjects = isSeniorSecondary ? SUBJECTS_BY_STREAM[stream] || SUBJECTS_BY_STREAM["Science"] : SUBJECTS_BY_STREAM["General"];
+  const availableGrades = getAvailableGrades(board);
+  const activeSubjects = getAvailableSubjects(board, grade, isSeniorSecondary ? stream : undefined);
 
-  // Ensure active subject is valid when stream, grade, or board changes
+  // Only display combinations represented in the maintained syllabus catalogue.
+  // Never silently substitute content from another class, subject, or board.
+  useEffect(() => {
+    if (!availableGrades.includes(grade)) {
+      setGrade(availableGrades[0] || "");
+    }
+  }, [availableGrades, grade]);
+
   useEffect(() => {
     if (!activeSubjects.includes(subject)) {
-      setSubject(activeSubjects[0]);
+      setSubject(activeSubjects[0] || "");
     }
-  }, [stream, grade, isSeniorSecondary, board]);
+  }, [activeSubjects, subject]);
 
-  // Load verified textbook chapters whenever Board, Grade, Stream, or Subject changes
+  // Load only the exact mapped selection; unavailable combinations remain empty.
   useEffect(() => {
-    const list = getOfficialChapters(board, grade, subject, isSeniorSecondary ? stream : undefined);
+    const list = getSyllabusChapters(board, grade, subject, isSeniorSecondary ? stream : undefined);
     setChapters(list || []);
   }, [board, grade, subject, stream, isSeniorSecondary]);
 
@@ -79,11 +83,14 @@ export function WizardSteps() {
       });
       const res = await fetch(`/api/studypack/generate?${query}`);
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "This study pack is not available yet.");
+      }
       setStudyPack(data.pack);
       setStep(3);
     } catch (err) {
       console.error(err);
-      alert("Failed to build study pack. Please try again.");
+      alert(err instanceof Error ? err.message : "Failed to build study pack. Please try again.");
     } finally {
       setGeneratingPack(false);
     }
@@ -141,7 +148,7 @@ export function WizardSteps() {
                 </div>
                 <div>
                   <p className="font-bold text-slate-900">CBSE Board</p>
-                  <p className="text-xs text-slate-500">Official NCERT Textbook Sequence</p>
+                  <p className="text-xs text-slate-500">NCERT textbook catalogue</p>
                 </div>
               </button>
 
@@ -158,7 +165,7 @@ export function WizardSteps() {
                 </div>
                 <div>
                   <p className="font-bold text-slate-900">Maharashtra Board</p>
-                  <p className="text-xs text-slate-500">State Board (ebalbharati / SSC / HSC)</p>
+                  <p className="text-xs text-slate-500">Balbharati textbook catalogue</p>
                 </div>
               </button>
             </div>
@@ -168,7 +175,7 @@ export function WizardSteps() {
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">2. Select Class</label>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-              {Array.from({ length: 12 }, (_, i) => `Class ${i + 1}`).map((g) => (
+              {availableGrades.map((g) => (
                 <button
                   key={g}
                   onClick={() => setGrade(g)}
@@ -258,10 +265,18 @@ export function WizardSteps() {
               <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-800 border border-amber-200">
                 Step 2 of 3
               </div>
-              <h2 className="mt-2 text-2xl font-extrabold text-slate-900">Official Textbook Chapters</h2>
+              <h2 className="mt-2 text-2xl font-extrabold text-slate-900">Syllabus Chapters</h2>
               <p className="text-xs text-slate-500 font-medium">
-                Verified Syllabus: <strong className="text-sky-700">{board}</strong> · <strong className="text-sky-700">{grade}</strong> {isSeniorSecondary && <span>· <strong className="text-purple-700">({stream} Stream)</strong></span>}
+                Current catalogue: <strong className="text-sky-700">{board}</strong> · <strong className="text-sky-700">{grade}</strong> {isSeniorSecondary && <span>· <strong className="text-purple-700">({stream} Stream)</strong></span>}
               </p>
+              <a
+                href={board === "CBSE" ? "https://ncert.nic.in/ebooks.php" : "https://ebalbharati.in/main/publichome.aspx"}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-block text-xs font-bold text-sky-700 underline hover:text-sky-900"
+              >
+                Open the {board === "CBSE" ? "NCERT" : "Balbharati"} textbook source ↗
+              </a>
             </div>
 
             <button
@@ -292,35 +307,17 @@ export function WizardSteps() {
             </div>
           </div>
 
-          {/* Custom Chapter Entry Input */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Want to study a specific chapter topic directly?
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder={`Type topic (e.g. Linear Equations Part 1, Similarity, Rotational Dynamics)...`}
-                value={customChapter}
-                onChange={(e) => setCustomChapter(e.target.value)}
-                className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-sky-500"
-              />
-              <button
-                disabled={!customChapter.trim() || generatingPack}
-                onClick={() => startStudyPack("custom-ch-1", customChapter.trim())}
-                className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-white hover:bg-amber-400 disabled:opacity-50 shadow-md"
-              >
-                {generatingPack ? <LoaderCircle className="animate-spin" size={16} /> : <Zap size={16} />}
-                Build Study Pack
-              </button>
-            </div>
-          </div>
-
-          {/* Official Verified Chapter List */}
+          {/* Chapter list */}
           <div>
             <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <BookOpen className="text-sky-600" size={18} /> Official Textbook Sequence for {board} {grade} — {subject} ({chapters.length} Chapters)
+              <BookOpen className="text-sky-600" size={18} /> {board} {grade} — {subject} ({chapters.length} Chapters)
             </h3>
+
+            {chapters.length === 0 && (
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-950">
+                This board, class, and subject combination is not yet available in the maintained catalogue. We do not substitute a different syllabus.
+              </p>
+            )}
 
             <div className="grid gap-3 sm:grid-cols-2">
               {chapters.map((ch) => (
@@ -333,7 +330,7 @@ export function WizardSteps() {
                       <span className="rounded-lg bg-sky-100 px-2.5 py-0.5 font-extrabold text-sky-800">
                         Chapter {ch.chapter_number}
                       </span>
-                      <span className="text-[11px] text-slate-400 font-semibold">Official Textbook</span>
+                      <span className="text-[11px] text-slate-400 font-semibold">Syllabus chapter</span>
                     </div>
                     <p className="text-base font-extrabold text-slate-900 leading-snug">{ch.title}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
