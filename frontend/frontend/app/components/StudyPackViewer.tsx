@@ -6,23 +6,26 @@ import {
   AlertTriangle,
   Award,
   BookOpen,
+  Bot,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Download,
   Flag,
-  HelpCircle,
-  Lightbulb,
+  Gamepad2,
   Layers,
+  Lightbulb,
   RotateCcw,
   Sparkles,
   Star,
   Target,
   Trophy,
-  XCircle,
   Zap,
 } from "lucide-react";
-import type { StudyPack, MCQ, PracticeQuestion, Flashcard } from "../api/studypack/generate/route";
+import type { StudyPack } from "../api/studypack/generate/route";
+import { NotebookLMAssistant } from "./NotebookLMAssistant";
+import { TimedQuizPlayer } from "./TimedQuizPlayer";
+import { TriviaGameTemplate } from "./TriviaGameTemplate";
+import { SpacedRepetitionDeck } from "./SpacedRepetitionDeck";
 
 interface Props {
   pack: StudyPack;
@@ -30,16 +33,7 @@ interface Props {
 }
 
 export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
-  const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "mcqs" | "practice" | "quality">("notes");
-
-  // Flashcards state
-  const [cardIndex, setCardIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [masteredCards, setMasteredCards] = useState<Set<string>>(new Set());
-
-  // MCQ state
-  const [userAnswers, setUserAnswers] = useState<Record<string, number>>({});
-  const [showExplanations, setShowExplanations] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "timed_quiz" | "trivia" | "practice" | "notebooklm" | "quality">("notes");
 
   // Practice accordion state
   const [expandedPq, setExpandedPq] = useState<Record<string, boolean>>({});
@@ -49,28 +43,6 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
   const [reportReason, setReportReason] = useState("Incorrect answer option");
   const [reportDetails, setReportDetails] = useState("");
   const [reportSubmitted, setReportSubmitted] = useState(false);
-
-  const currentFlashcard = pack.flashcards[cardIndex] || pack.flashcards[0];
-
-  function toggleMastered(id: string) {
-    setMasteredCards((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function handleSelectOption(mcqId: string, optionIdx: number) {
-    if (userAnswers[mcqId] !== undefined) return; // Locked after selection
-    setUserAnswers((prev) => ({ ...prev, [mcqId]: optionIdx }));
-    setShowExplanations((prev) => ({ ...prev, [mcqId]: true }));
-  }
-
-  function resetQuiz() {
-    setUserAnswers({});
-    setShowExplanations({});
-  }
 
   async function submitReport() {
     if (!reportingItem) return;
@@ -98,41 +70,29 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
     }
   }
 
-  // Calculate score for MCQs
-  const answeredCount = Object.keys(userAnswers).length;
-  const correctCount = pack.mcqs.reduce((acc, mcq) => {
-    return userAnswers[mcq.id] === mcq.correct_index ? acc + 1 : acc;
-  }, 0);
-
   return (
     <div className="relative mx-auto w-full max-w-6xl space-y-6">
-      {/* Top Banner Card */}
-      <div className="relative overflow-hidden rounded-3xl border border-cyan-400/20 bg-gradient-to-r from-slate-900/90 via-slate-900/95 to-indigo-950/80 p-6 shadow-2xl backdrop-blur-xl">
-        <div className="absolute -right-12 -top-12 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl" />
-        <div className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-amber-500/10 blur-3xl" />
-
+      {/* Top Banner Card - Aesthetic Light Theme */}
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
         <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-cyan-300 ring-1 ring-cyan-400/30">
+              <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-800 border border-sky-200">
                 {pack.board} · {pack.grade}
               </span>
-              <span className="rounded-full bg-indigo-400/10 px-3 py-1 text-indigo-300 ring-1 ring-indigo-400/30">
+              <span className="rounded-full bg-purple-100 px-3 py-1 text-purple-800 border border-purple-200">
                 {pack.subject}
               </span>
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-3 py-1 text-emerald-300 ring-1 ring-emerald-400/30">
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-emerald-800 border border-emerald-200">
                 <Zap size={13} /> Server Cached (v{pack.version})
-              </span>
-              <span className="flex items-center gap-1 text-slate-400">
-                ID: <code className="rounded bg-slate-800 px-1.5 py-0.5 text-[11px] font-mono text-slate-300">{pack.source_identifier}</code>
               </span>
             </div>
 
-            <h1 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
+            <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
               {pack.chapter_title}
             </h1>
-            <p className="mt-1 text-sm text-slate-300">
-              Interactive Child-Friendly Study Pack with Quality Gate Validation
+            <p className="mt-1 text-xs sm:text-sm text-slate-500 font-medium">
+              Interactive Learning Loop: Notes · Spaced Flashcards · Timed Quiz · Trivia Game · NotebookLM AI Assistant
             </p>
           </div>
 
@@ -140,53 +100,64 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
             {onBackToSyllabus && (
               <button
                 onClick={onBackToSyllabus}
-                className="rounded-2xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700"
+                className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200 transition"
               >
-                ← Back to Syllabus
+                ← Change Chapter
               </button>
             )}
             <button
               onClick={() => setActiveTab("quality")}
-              className="flex items-center gap-1.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+              className="flex items-center gap-1.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition"
             >
-              <CheckCircle2 size={16} /> Quality Gate Passed
+              <CheckCircle2 size={16} /> Quality Gate Verified
             </button>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-800/80 pt-4">
+        <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
           <TabButton
             active={activeTab === "notes"}
             onClick={() => setActiveTab("notes")}
             icon={<BookOpen size={16} />}
             label="Short Notes"
-            badge="Summary"
-            accent="cyan"
+            accent="sky"
           />
           <TabButton
             active={activeTab === "flashcards"}
             onClick={() => setActiveTab("flashcards")}
             icon={<Layers size={16} />}
-            label="Flashcards"
-            badge={`${masteredCards.size}/${pack.flashcards.length}`}
+            label="Spaced Flashcards"
             accent="amber"
           />
           <TabButton
-            active={activeTab === "mcqs"}
-            onClick={() => setActiveTab("mcqs")}
+            active={activeTab === "timed_quiz"}
+            onClick={() => setActiveTab("timed_quiz")}
             icon={<Target size={16} />}
-            label="10 MCQs Quiz"
-            badge={answeredCount > 0 ? `${correctCount}/${answeredCount}` : "10 Items"}
+            label="Timed Quiz"
             accent="emerald"
+          />
+          <TabButton
+            active={activeTab === "trivia"}
+            onClick={() => setActiveTab("trivia")}
+            icon={<Gamepad2 size={16} />}
+            label="Trivia Game"
+            accent="purple"
           />
           <TabButton
             active={activeTab === "practice"}
             onClick={() => setActiveTab("practice")}
             icon={<Star size={16} />}
-            label="High-Priority Practice Qs"
-            badge="10 Practice"
-            accent="violet"
+            label="High-Priority Qs"
+            accent="rose"
+          />
+          <TabButton
+            active={activeTab === "notebooklm"}
+            onClick={() => setActiveTab("notebooklm")}
+            icon={<Bot size={16} />}
+            label="NotebookLM AI Assistant"
+            badge="Ask AI"
+            accent="sky"
           />
         </div>
       </div>
@@ -195,337 +166,144 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
       <div className="min-h-[460px]">
         {/* SHORT NOTES TAB */}
         {activeTab === "notes" && (
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="space-y-6 md:col-span-2">
-              <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl backdrop-blur-md">
-                <div className="flex items-center gap-2.5 text-cyan-300">
-                  <Sparkles size={20} />
-                  <h3 className="text-lg font-bold text-white">Chapter Summary</h3>
-                </div>
-                <p className="mt-3 text-base leading-relaxed text-slate-200">{pack.short_notes.summary}</p>
+          <div className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-3">
+              <div className="space-y-6 md:col-span-2">
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-md">
+                  <div className="flex items-center gap-2.5 text-sky-600">
+                    <Sparkles size={20} />
+                    <h3 className="text-lg font-bold text-slate-900">Chapter Summary</h3>
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-700 font-medium">{pack.short_notes.summary}</p>
 
-                <div className="mt-6 border-t border-slate-800 pt-5">
-                  <h4 className="flex items-center gap-2 text-sm font-semibold text-cyan-200">
-                    <Lightbulb size={16} /> Key Learning Concepts
-                  </h4>
-                  <ul className="mt-3 space-y-2.5">
-                    {pack.short_notes.key_concepts.map((concept, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-sm text-slate-300">
-                        <span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-cyan-400/20 text-xs font-bold text-cyan-300">
-                          {idx + 1}
-                        </span>
-                        <span>{concept}</span>
-                      </li>
+                  <div className="mt-6 border-t border-slate-100 pt-5">
+                    <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sky-800">
+                      <Lightbulb size={16} /> Key Learning Concepts
+                    </h4>
+                    <ul className="mt-3 space-y-2.5">
+                      {pack.short_notes.key_concepts.map((concept, idx) => (
+                        <li key={idx} className="flex items-start gap-3 text-xs text-slate-700 font-medium">
+                          <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-sky-100 text-[11px] font-extrabold text-sky-700">
+                            {idx + 1}
+                          </span>
+                          <span>{concept}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-md">
+                  <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                    <Award className="text-amber-500" size={20} /> Formulas & Definitions
+                  </h3>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {pack.short_notes.formulas_and_definitions.map((item, idx) => (
+                      <div key={idx} className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
+                        <p className="font-bold text-amber-900 text-xs">{item.term}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.definition}</p>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl backdrop-blur-md">
-                <h3 className="flex items-center gap-2 text-lg font-bold text-white">
-                  <Award className="text-amber-400" size={20} /> Formulas & Definitions
-                </h3>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {pack.short_notes.formulas_and_definitions.map((item, idx) => (
-                    <div key={idx} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-                      <p className="font-semibold text-amber-300">{item.term}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-300">{item.definition}</p>
-                    </div>
-                  ))}
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-md">
+                  <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                    <CheckCircle2 className="text-emerald-600" size={20} /> Quick Recap Points
+                  </h3>
+                  <div className="mt-4 space-y-3">
+                    {pack.short_notes.recap_points.map((pt, idx) => (
+                      <div key={idx} className="flex items-start gap-3 rounded-2xl bg-emerald-50/60 p-3.5 text-xs text-slate-800 font-medium border border-emerald-100">
+                        <span className="text-emerald-600 font-bold">✓</span>
+                        <span>{pt}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-sky-200 bg-gradient-to-b from-sky-50 to-indigo-50 p-5 text-center shadow-sm">
+                  <Bot className="mx-auto text-sky-600" size={32} />
+                  <h4 className="mt-2 text-sm font-bold text-slate-900">Have a question on this chapter?</h4>
+                  <p className="mt-1 text-xs text-slate-600">Ask our NotebookLM AI Tutor for instant explanations!</p>
+                  <button
+                    onClick={() => setActiveTab("notebooklm")}
+                    className="mt-4 w-full rounded-2xl bg-sky-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-sky-500 shadow-md transition"
+                  >
+                    Open NotebookLM AI Assistant 🤖
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6">
-              <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl backdrop-blur-md">
-                <h3 className="flex items-center gap-2 text-lg font-bold text-white">
-                  <CheckCircle2 className="text-emerald-400" size={20} /> Quick Recap Points
-                </h3>
-                <div className="mt-4 space-y-3">
-                  {pack.short_notes.recap_points.map((pt, idx) => (
-                    <div key={idx} className="flex items-start gap-3 rounded-xl bg-slate-800/50 p-3.5 text-xs text-slate-200">
-                      <span className="text-emerald-400 font-bold">✓</span>
-                      <span>{pt}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-cyan-500/20 bg-gradient-to-b from-cyan-950/30 to-slate-900/80 p-5 text-center">
-                <Trophy className="mx-auto text-amber-400" size={32} />
-                <h4 className="mt-2 text-base font-bold text-white">Ready for practice?</h4>
-                <p className="mt-1 text-xs text-slate-400">Try the 10 interactive MCQs or test flashcards.</p>
-                <div className="mt-4 flex justify-center gap-2">
-                  <button
-                    onClick={() => setActiveTab("flashcards")}
-                    className="rounded-xl bg-amber-500/20 px-3.5 py-2 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/30"
-                  >
-                    Flashcards
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("mcqs")}
-                    className="rounded-xl bg-emerald-500/20 px-3.5 py-2 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/30"
-                  >
-                    10 MCQs Quiz
-                  </button>
-                </div>
-              </div>
+            {/* Bottom Next Step Button */}
+            <div className="flex justify-end pt-4 border-t border-slate-200">
+              <button
+                onClick={() => setActiveTab("flashcards")}
+                className="flex items-center gap-2 rounded-2xl bg-amber-500 px-6 py-3 text-xs font-bold text-white hover:bg-amber-400 shadow-md transition"
+              >
+                Next Step: Spaced Flashcards ➔
+              </button>
             </div>
           </div>
         )}
 
         {/* FLASHCARDS TAB */}
         {activeTab === "flashcards" && (
-          <div className="mx-auto max-w-2xl space-y-6">
-            <div className="flex items-center justify-between text-sm text-slate-300">
-              <span className="font-semibold text-amber-300">
-                Card {cardIndex + 1} of {pack.flashcards.length}
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Mastered:</span>
-                <span className="rounded-full bg-amber-400/20 px-2.5 py-0.5 text-xs font-bold text-amber-300">
-                  {masteredCards.size} / {pack.flashcards.length}
-                </span>
-              </div>
-            </div>
-
-            {/* 3D Flip Card */}
-            <div
-              onClick={() => setIsFlipped(!isFlipped)}
-              className="perspective-1000 group relative min-h-[300px] cursor-pointer rounded-3xl border border-amber-400/30 bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/40 p-8 shadow-2xl transition-all duration-500 hover:border-amber-400/60"
-            >
-              <div className="absolute right-4 top-4 flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleMastered(currentFlashcard.id);
-                  }}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                    masteredCards.has(currentFlashcard.id)
-                      ? "bg-emerald-500 text-slate-950"
-                      : "border border-slate-700 bg-slate-800 text-slate-300 hover:border-amber-400"
-                  }`}
-                >
-                  {masteredCards.has(currentFlashcard.id) ? "★ Mastered" : "+ Mark Mastered"}
-                </button>
-              </div>
-
-              <div className="flex h-full flex-col justify-between pt-4">
-                <div>
-                  <span className="inline-block rounded-lg bg-amber-400/10 px-2.5 py-1 text-xs font-semibold text-amber-300">
-                    {currentFlashcard.concept}
-                  </span>
-                  <h3 className="mt-4 text-xl font-bold leading-snug text-white sm:text-2xl">
-                    {isFlipped ? currentFlashcard.answer : currentFlashcard.question}
-                  </h3>
-                </div>
-
-                <div className="mt-8 border-t border-slate-800 pt-4">
-                  {isFlipped ? (
-                    <div className="text-xs leading-5 text-amber-200/90">
-                      <span className="font-bold text-amber-300">Explanation: </span>
-                      {currentFlashcard.explanation}
-                    </div>
-                  ) : (
-                    <p className="text-center text-xs font-medium text-slate-400 animate-pulse">
-                      Tap anywhere to flip card 🔄
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation Controls */}
-            <div className="flex items-center justify-between pt-2">
-              <button
-                disabled={cardIndex === 0}
-                onClick={() => {
-                  setIsFlipped(false);
-                  setCardIndex((prev) => Math.max(0, prev - 1));
-                }}
-                className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-700 disabled:opacity-40"
-              >
-                ← Previous
-              </button>
-
-              <button
-                onClick={() => {
-                  setReportingItem({
-                    type: "flashcard",
-                    id: currentFlashcard.id,
-                    title: `Flashcard: ${currentFlashcard.concept}`,
-                  });
-                }}
-                className="flex items-center gap-1 text-xs text-slate-400 hover:text-amber-300"
-              >
-                <Flag size={13} /> Report issue
-              </button>
-
-              <button
-                disabled={cardIndex === pack.flashcards.length - 1}
-                onClick={() => {
-                  setIsFlipped(false);
-                  setCardIndex((prev) => Math.min(pack.flashcards.length - 1, prev + 1));
-                }}
-                className="rounded-2xl bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 transition hover:bg-amber-300 disabled:opacity-40"
-              >
-                Next →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 10 MCQS QUIZ TAB */}
-        {activeTab === "mcqs" && (
           <div className="space-y-6">
-            {/* Score Bar */}
-            <div className="flex flex-wrap items-center justify-between rounded-2xl border border-emerald-500/20 bg-slate-900/80 p-4 shadow-lg">
-              <div className="flex items-center gap-3">
-                <Target className="text-emerald-400" size={24} />
-                <div>
-                  <h3 className="text-sm font-bold text-white">10 MCQs Practice Quiz</h3>
-                  <p className="text-xs text-slate-400">
-                    Answered {answeredCount} of {pack.mcqs.length} questions
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                {answeredCount > 0 && (
-                  <div className="text-right">
-                    <p className="text-xs text-slate-400">Current Score</p>
-                    <p className="text-lg font-bold text-emerald-400">
-                      {correctCount} / {pack.mcqs.length} ({Math.round((correctCount / pack.mcqs.length) * 100)}%)
-                    </p>
-                  </div>
-                )}
-
-                <button
-                  onClick={resetQuiz}
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-700"
-                >
-                  <RotateCcw size={14} /> Reset
-                </button>
-              </div>
-            </div>
-
-            {/* Questions List */}
-            <div className="space-y-6">
-              {pack.mcqs.map((mcq, idx) => {
-                const selectedOpt = userAnswers[mcq.id];
-                const isAnswered = selectedOpt !== undefined;
-                const isCorrect = selectedOpt === mcq.correct_index;
-
-                return (
-                  <div
-                    key={mcq.id}
-                    className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl backdrop-blur-md"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="grid h-7 w-7 place-items-center rounded-xl bg-emerald-400/20 text-xs font-bold text-emerald-300">
-                          Q{idx + 1}
-                        </span>
-                        <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-[11px] font-medium text-slate-300">
-                          {mcq.difficulty}
-                        </span>
-                        <span className="text-[11px] text-slate-500">{mcq.syllabus_tag}</span>
-                      </div>
-
-                      <button
-                        onClick={() =>
-                          setReportingItem({
-                            type: "mcq",
-                            id: mcq.id,
-                            title: `MCQ #${idx + 1}`,
-                          })
-                        }
-                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-cyan-300"
-                      >
-                        <Flag size={13} /> Report
-                      </button>
-                    </div>
-
-                    <h4 className="mt-4 text-base font-semibold text-white">{mcq.question}</h4>
-
-                    {/* Options Grid */}
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {mcq.options.map((opt, optIdx) => {
-                        let optStyle =
-                          "border-slate-800 bg-slate-800/40 text-slate-200 hover:border-slate-700 hover:bg-slate-800";
-
-                        if (isAnswered) {
-                          if (optIdx === mcq.correct_index) {
-                            optStyle = "border-emerald-500 bg-emerald-500/15 text-emerald-200 font-semibold";
-                          } else if (optIdx === selectedOpt) {
-                            optStyle = "border-rose-500 bg-rose-500/15 text-rose-200";
-                          } else {
-                            optStyle = "border-slate-800/50 bg-slate-900/30 text-slate-500 opacity-60";
-                          }
-                        }
-
-                        return (
-                          <button
-                            key={optIdx}
-                            disabled={isAnswered}
-                            onClick={() => handleSelectOption(mcq.id, optIdx)}
-                            className={`flex items-start gap-3 rounded-2xl border p-4 text-left text-sm transition ${optStyle}`}
-                          >
-                            <span className="mt-0.5 font-bold">
-                              {String.fromCharCode(65 + optIdx)}.
-                            </span>
-                            <span className="flex-1">{opt}</span>
-                            {isAnswered && optIdx === mcq.correct_index && (
-                              <CheckCircle2 size={18} className="shrink-0 text-emerald-400" />
-                            )}
-                            {isAnswered && optIdx === selectedOpt && optIdx !== mcq.correct_index && (
-                              <XCircle size={18} className="shrink-0 text-rose-400" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Explanation Box */}
-                    {isAnswered && (
-                      <div
-                        className={`mt-4 rounded-2xl border p-4 text-xs leading-5 ${
-                          isCorrect
-                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-                            : "border-slate-700 bg-slate-800/80 text-slate-300"
-                        }`}
-                      >
-                        <p className="font-bold flex items-center gap-1.5">
-                          {isCorrect ? (
-                            <>
-                              <CheckCircle2 size={15} className="text-emerald-400" /> Correct! Excellent work 🎉
-                            </>
-                          ) : (
-                            <>
-                              <AlertCircle size={15} className="text-rose-400" /> Learning Opportunity
-                            </>
-                          )}
-                        </p>
-                        <p className="mt-1.5">{mcq.explanation}</p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <SpacedRepetitionDeck flashcards={pack.flashcards} chapterTitle={pack.chapter_title} cacheKey={pack.cache_key} />
+            <div className="flex justify-end pt-4 border-t border-slate-200">
+              <button
+                onClick={() => setActiveTab("timed_quiz")}
+                className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white hover:bg-emerald-500 shadow-md transition"
+              >
+                Next Step: Timed Quiz Player ➔
+              </button>
             </div>
           </div>
         )}
 
-        {/* 10 HIGH-PRIORITY PRACTICE QUESTIONS TAB */}
+        {/* TIMED QUIZ TAB */}
+        {activeTab === "timed_quiz" && (
+          <div className="space-y-6">
+            <TimedQuizPlayer mcqs={pack.mcqs} chapterTitle={pack.chapter_title} />
+            <div className="flex justify-end pt-4 border-t border-slate-200">
+              <button
+                onClick={() => setActiveTab("trivia")}
+                className="flex items-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-xs font-bold text-white hover:bg-purple-500 shadow-md transition"
+              >
+                Next Step: Trivia Game ➔
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TRIVIA GAME TAB */}
+        {activeTab === "trivia" && (
+          <div className="space-y-6">
+            <TriviaGameTemplate mcqs={pack.mcqs} chapterTitle={pack.chapter_title} />
+            <div className="flex justify-end pt-4 border-t border-slate-200">
+              <button
+                onClick={() => setActiveTab("practice")}
+                className="flex items-center gap-2 rounded-2xl bg-rose-600 px-6 py-3 text-xs font-bold text-white hover:bg-rose-500 shadow-md transition"
+              >
+                Next Step: High-Priority Practice Qs ➔
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* HIGH-PRIORITY PRACTICE QUESTIONS TAB */}
         {activeTab === "practice" && (
           <div className="space-y-6">
-            <div className="rounded-3xl border border-violet-500/20 bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 p-6 shadow-xl">
+            <div className="rounded-3xl border border-rose-200 bg-gradient-to-r from-rose-50 via-purple-50 to-sky-50 p-6 shadow-sm">
               <div className="flex items-center gap-3">
-                <Star className="text-amber-400" size={24} />
+                <Star className="text-amber-500" size={24} />
                 <div>
-                  <h3 className="text-lg font-bold text-white">10 High-Priority Practice Questions</h3>
-                  <p className="text-xs text-slate-300">
-                    Ranked by textbook coverage, concept frequency, prerequisite value, and teacher feedback.
+                  <h3 className="text-lg font-bold text-slate-900">10 High-Priority Practice Questions</h3>
+                  <p className="text-xs text-slate-600">
+                    Ranked Priority #1 to #10 based on textbook coverage, recurring exam patterns, prerequisite value, and teacher feedback.
                   </p>
                 </div>
               </div>
@@ -538,20 +316,20 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
                 return (
                   <div
                     key={pq.id}
-                    className="rounded-3xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg backdrop-blur-md transition hover:border-slate-700"
+                    className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-xl bg-violet-500/20 px-3 py-1 text-xs font-bold text-violet-300">
+                        <span className="rounded-xl bg-purple-100 px-3 py-1 text-xs font-extrabold text-purple-800 border border-purple-200">
                           Priority #{pq.priority_rank}
                         </span>
-                        <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-300">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-700 font-bold">
                           {pq.marks} Marks
                         </span>
-                        <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600 font-medium">
                           {pq.difficulty}
                         </span>
-                        <span className="rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-300">
+                        <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-sky-800 border border-sky-100">
                           {pq.ranking_rationale}
                         </span>
                       </div>
@@ -564,30 +342,27 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
                             title: `Priority Q #${pq.priority_rank}`,
                           })
                         }
-                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-amber-300"
+                        className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600"
                       >
                         <Flag size={13} /> Report
                       </button>
                     </div>
 
-                    <h4 className="mt-3 text-base font-semibold text-white">{pq.question}</h4>
+                    <h4 className="mt-3 text-sm font-bold text-slate-900">{pq.question}</h4>
 
-                    {/* Accordion Toggle */}
-                    <div className="mt-4 border-t border-slate-800/80 pt-3">
+                    <div className="mt-4 border-t border-slate-100 pt-3">
                       <button
-                        onClick={() =>
-                          setExpandedPq((prev) => ({ ...prev, [pq.id]: !prev[pq.id] }))
-                        }
-                        className="flex items-center gap-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+                        onClick={() => setExpandedPq((prev) => ({ ...prev, [pq.id]: !prev[pq.id] }))}
+                        className="flex items-center gap-2 text-xs font-bold text-sky-700 hover:text-sky-800"
                       >
                         {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                         {isOpen ? "Hide Solution Key" : "View Solution Key & Step Guidance"}
                       </button>
 
                       {isOpen && (
-                        <div className="mt-3 rounded-2xl border border-cyan-500/20 bg-slate-950/60 p-4 text-xs leading-6 text-slate-200">
-                          <p className="font-bold text-cyan-300">Answer Key & Marking Scheme:</p>
-                          <p className="mt-1 whitespace-pre-line text-slate-300">{pq.answer_key}</p>
+                        <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 text-xs leading-relaxed text-slate-800">
+                          <p className="font-bold text-sky-900">Answer Key & Marking Scheme:</p>
+                          <p className="mt-1 whitespace-pre-line text-slate-700 font-medium">{pq.answer_key}</p>
                         </div>
                       )}
                     </div>
@@ -595,24 +370,36 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
                 );
               })}
             </div>
+
+            <div className="flex justify-end pt-4 border-t border-slate-200">
+              <button
+                onClick={() => setActiveTab("notebooklm")}
+                className="flex items-center gap-2 rounded-2xl bg-sky-600 px-6 py-3 text-xs font-bold text-white hover:bg-sky-500 shadow-md transition"
+              >
+                Next Step: NotebookLM AI Assistant 🤖
+              </button>
+            </div>
           </div>
         )}
 
+        {/* NOTEBOOKLM AI ASSISTANT TAB */}
+        {activeTab === "notebooklm" && <NotebookLMAssistant pack={pack} />}
+
         {/* QUALITY GATE TAB */}
         {activeTab === "quality" && (
-          <div className="rounded-3xl border border-emerald-500/30 bg-slate-900/80 p-6 shadow-xl backdrop-blur-md">
+          <div className="rounded-3xl border border-emerald-200 bg-white p-6 shadow-md space-y-6">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="text-emerald-400" size={28} />
+              <CheckCircle2 className="text-emerald-600" size={28} />
               <div>
-                <h3 className="text-lg font-bold text-white">EduAI Deterministic Quality Gate Report</h3>
-                <p className="text-xs text-slate-400">Validation verification for Study Pack v{pack.version}</p>
+                <h3 className="text-lg font-bold text-slate-900">EduAI Quality Gate Validation Matrix</h3>
+                <p className="text-xs text-slate-500">Validation status for Study Pack v{pack.version}</p>
               </div>
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <QualityMetric label="Valid JSON Schema" status="PASS" detail="Fully typed StudyPack interface" />
               <QualityMetric label="MCQ Count Requirement" status="PASS" detail="Exactly 10 MCQs validated" />
-              <QualityMetric fontColor="text-emerald-300" label="Answer Options" status="PASS" detail="Exactly 4 options per MCQ" />
+              <QualityMetric label="Answer Options" status="PASS" detail="Exactly 4 options per MCQ" />
               <QualityMetric label="Correct Answer Index" status="PASS" detail="Exactly 1 valid correct option (0-3)" />
               <QualityMetric label="Explanations & Difficulty" status="PASS" detail="100% question coverage" />
               <QualityMetric label="High-Priority Questions" status="PASS" detail="Exactly 10 practice questions ranked" />
@@ -626,73 +413,62 @@ export function StudyPackViewer({ pack, onBackToSyllabus }: Props) {
 
       {/* REPORT ISSUE MODAL */}
       {reportingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-amber-400">
-                <AlertTriangle size={20} />
-                <h3 className="font-bold text-white">Report Issue</h3>
+              <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
+                <AlertTriangle size={18} /> Report Issue
               </div>
-              <button
-                onClick={() => setReportingItem(null)}
-                className="text-slate-400 hover:text-white"
-              >
+              <button onClick={() => setReportingItem(null)} className="text-slate-400 hover:text-slate-700">
                 ✕
               </button>
             </div>
 
-            <p className="mt-2 text-xs text-slate-400">
-              Help teachers and developers keep EduAI content accurate for students.
-            </p>
-
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-300">Reporting for:</label>
-                <div className="mt-1 rounded-xl bg-slate-800 p-2.5 text-xs text-cyan-300 font-medium">
-                  {reportingItem.title}
-                </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500">Reporting item:</label>
+              <div className="mt-1 rounded-xl bg-slate-100 p-2.5 text-xs text-slate-800 font-bold">
+                {reportingItem.title}
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300">Reason</label>
-                <select
-                  value={reportReason}
-                  onChange={(e) => setReportReason(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"
-                >
-                  <option>Incorrect answer option</option>
-                  <option>Typo or formatting error</option>
-                  <option>Syllabus mismatch</option>
-                  <option>Unclear explanation</option>
-                  <option>Other content issue</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500">Reason</label>
+              <select
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs text-slate-800"
+              >
+                <option>Incorrect answer option</option>
+                <option>Typo or formatting error</option>
+                <option>Syllabus mismatch</option>
+                <option>Unclear explanation</option>
+              </select>
+            </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300">Details (optional)</label>
-                <textarea
-                  rows={3}
-                  value={reportDetails}
-                  onChange={(e) => setReportDetails(e.target.value)}
-                  placeholder="Describe what needs correction..."
-                  className="mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-800 p-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500">Details</label>
+              <textarea
+                rows={3}
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                placeholder="Describe what needs correction..."
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 outline-none focus:border-sky-500"
+              />
+            </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  onClick={() => setReportingItem(null)}
-                  className="rounded-xl border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:bg-slate-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitReport}
-                  className="rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300"
-                >
-                  {reportSubmitted ? "Submitted ✓" : "Submit Report"}
-                </button>
-              </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setReportingItem(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitReport}
+                className="rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-white hover:bg-amber-400"
+              >
+                {reportSubmitted ? "Submitted ✓" : "Submit Report"}
+              </button>
             </div>
           </div>
         </div>
@@ -714,20 +490,21 @@ function TabButton({
   icon: React.ReactNode;
   label: string;
   badge?: string;
-  accent: "cyan" | "amber" | "emerald" | "violet";
+  accent: "sky" | "amber" | "emerald" | "purple" | "rose";
 }) {
   const activeStyles = {
-    cyan: "bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-400/20",
-    amber: "bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/20",
-    emerald: "bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-400/20",
-    violet: "bg-violet-400 text-slate-950 shadow-lg shadow-violet-400/20",
+    sky: "bg-sky-600 text-white shadow-md shadow-sky-600/20",
+    amber: "bg-amber-500 text-white shadow-md shadow-amber-500/20",
+    emerald: "bg-emerald-600 text-white shadow-md shadow-emerald-600/20",
+    purple: "bg-purple-600 text-white shadow-md shadow-purple-600/20",
+    rose: "bg-rose-600 text-white shadow-md shadow-rose-600/20",
   }[accent];
 
   return (
     <button
       onClick={onClick}
       className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-bold transition ${
-        active ? activeStyles : "border border-slate-800 bg-slate-950/40 text-slate-300 hover:bg-slate-800/60"
+        active ? activeStyles : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
       }`}
     >
       {icon}
@@ -735,7 +512,7 @@ function TabButton({
       {badge && (
         <span
           className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-            active ? "bg-slate-950/20 text-slate-900" : "bg-slate-800 text-slate-400"
+            active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
           }`}
         >
           {badge}
@@ -745,16 +522,16 @@ function TabButton({
   );
 }
 
-function QualityMetric({ label, status, detail, fontColor }: { label: string; status: string; detail: string; fontColor?: string }) {
+function QualityMetric({ label, status, detail }: { label: string; status: string; detail: string }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-300">{label}</span>
-        <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-300">
+        <span className="text-xs font-bold text-slate-800">{label}</span>
+        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800">
           {status}
         </span>
       </div>
-      <p className={`mt-2 text-xs font-mono truncate ${fontColor || "text-slate-400"}`}>{detail}</p>
+      <p className="mt-2 text-xs font-mono text-slate-500 truncate">{detail}</p>
     </div>
   );
 }
