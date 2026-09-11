@@ -10,11 +10,9 @@ type IssueReport = {
   details?: string;
   status: "pending" | "reviewed" | "resolved";
   reported_at: string;
-  resolved_at?: string;
-  resolved_by?: string;
 };
 
-export const reports: IssueReport[] = [];
+const reports: IssueReport[] = [];
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +28,7 @@ export async function POST(request: NextRequest) {
       pack_id: pack_id || "unknown",
       chapter_title: chapter_title || "General",
       item_type: item_type || "mcq",
-      item_id: item_id || undefined,
+      item_id: item_id || null,
       reason: String(reason),
       details: details ? String(details) : "",
       status: "pending",
@@ -47,37 +45,4 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({ count: reports.length, reports });
-}
-
-// PATCH: Update report status from teacher dashboard
-export async function PATCH(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { report_id, status, resolved_by } = body;
-
-    if (!report_id || !status) {
-      return NextResponse.json({ detail: "report_id and status are required" }, { status: 400 });
-    }
-
-    const validStatuses = ["pending", "reviewed", "resolved"];
-    if (!validStatuses.includes(status)) {
-      return NextResponse.json({ detail: "Invalid status. Use: pending, reviewed, resolved" }, { status: 400 });
-    }
-
-    const report = reports.find((r) => r.id === report_id);
-    if (!report) {
-      return NextResponse.json({ detail: "Report not found" }, { status: 404 });
-    }
-
-    report.status = status;
-    if (status === "resolved") {
-      report.resolved_at = new Date().toISOString();
-      report.resolved_by = resolved_by || "Teacher";
-    }
-
-    return NextResponse.json({ status: "success", message: "Report status updated", report });
-  } catch (error) {
-    console.error("Report PATCH error", error);
-    return NextResponse.json({ detail: "Invalid request" }, { status: 400 });
-  }
 }

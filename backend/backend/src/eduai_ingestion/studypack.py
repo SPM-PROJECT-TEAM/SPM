@@ -293,7 +293,7 @@ def generate_deterministic_study_pack(
         chapter_id=chapter_id,
         chapter_title=clean_title,
         medium=medium,
-        version="2.1",
+        version="1.2",
         source_identifier=chapter_id,
         generated_at=now_iso,
         short_notes=notes,

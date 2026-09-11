@@ -43,10 +43,13 @@ export async function GET(request: NextRequest) {
       }),
       cache: "no-store",
     });
+
     if (!response.ok) throw new Error(`DIKSHA returned ${response.status}`);
     const payload = await response.json();
     const result = payload.result ?? {};
-    const items = (result.content ?? []).map((item: DikshaContent) => ({
+    const rawItems: DikshaContent[] = result.content ?? [];
+
+    const items = rawItems.map((item: DikshaContent) => ({
       diksha_identifier: item.identifier ?? crypto.randomUUID(),
       title: item.name ?? item.identifier ?? "Untitled resource",
       board: item.board ?? null,
@@ -56,9 +59,24 @@ export async function GET(request: NextRequest) {
       content_type: item.contentType ?? null,
       medium: item.medium ?? null,
     }));
-    return NextResponse.json({ source_count: result.count ?? items.length, fetched_at: new Date().toISOString(), items });
+
+    const count = result.count ?? items.length;
+
+    return NextResponse.json({
+      found: items.length > 0,
+      source_count: count,
+      fetched_at: new Date().toISOString(),
+      items,
+      message: items.length > 0 ? `Found ${count} DIKSHA curriculum resources.` : "No official DIKSHA textbook resources found for this search.",
+    });
   } catch (error) {
     console.error("DIKSHA curriculum search failed", error);
-    return NextResponse.json({ detail: "DIKSHA curriculum service is unavailable" }, { status: 502 });
+    return NextResponse.json({
+      found: false,
+      source_count: 0,
+      fetched_at: new Date().toISOString(),
+      items: [],
+      message: "The official curriculum source is currently unavailable.",
+    }, { status: 200 }); // Return 200 with found: false so frontend empty state works cleanly
   }
 }
